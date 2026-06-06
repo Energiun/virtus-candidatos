@@ -24,7 +24,7 @@ def buscar_candidatos(cargo, cidade, habilidades, idioma):
     params = {
         "q": query,
         "api_key": SERPAPI_KEY,
-        "num": 20,
+        "num": 5,
         "hl": "pt",
         "gl": "br"
     }
