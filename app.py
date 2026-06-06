@@ -96,9 +96,11 @@ def buscar():
         msg["To"] = DESTINATARIO
         msg.attach(MIMEText(corpo, "html"))
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as smtp:
-            smtp.login(REMETENTE, SENHA_EMAIL)
-            smtp.sendmail(REMETENTE, DESTINATARIO, msg.as_string())
+with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as smtp:
+    smtp.ehlo()
+    smtp.starttls()
+    smtp.login(REMETENTE, SENHA_EMAIL)
+    smtp.sendmail(REMETENTE, DESTINATARIO, msg.as_string())
 
         return jsonify({"ok": True, "total": len(candidatos),
             "mensagem": f"{len(candidatos)} candidatos encontrados! Lista enviada para {DESTINATARIO}."})
