@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtus Exec — Busca de Candidatos</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --vermelho: #B22222;
+    --vermelho-escuro: #8B0000;
+    --vermelho-claro: #dc3545;
+    --creme: #FDF8F3;
+    --cinza: #6c757d;
+    --branco: #ffffff;
+    --sombra: 0 4px 24px rgba(178,34,34,0.10);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--creme);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  .logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    color: var(--vermelho-escuro);
+    letter-spacing: -0.5px;
+  }
+
+  .logo span {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--cinza);
+    font-weight: 300;
+    margin-top: 4px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .card {
+    background: var(--branco);
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: var(--sombra);
+    border-top: 4px solid var(--vermelho);
+  }
+
+  .card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+  }
+
+  .card p {
+    font-size: 0.88rem;
+    color: var(--cinza);
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+
+  .field {
+    margin-bottom: 18px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: #1a1a1a;
+    background: #fafafa;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  input:focus {
+    border-color: var(--vermelho);
+    box-shadow: 0 0 0 3px rgba(178,34,34,0.08);
+    background: white;
+  }
+
+  input::placeholder { color: #bbb; }
+
+  .hint {
+    font-size: 0.75rem;
+    color: #aaa;
+    margin-top: 4px;
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    background: var(--vermelho);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.3px;
+  }
+
+  button:hover { background: var(--vermelho-escuro); }
+  button:active { transform: scale(0.98); }
+  button:disabled { background: #ccc; cursor: not-allowed; }
+
+  .status {
+    margin-top: 20px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: none;
+    line-height: 1.5;
+  }
+
+  .status.sucesso {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+    display: block;
+  }
+
+  .status.erro {
+    background: #fff1f2;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+    display: block;
+  }
+
+  .status.carregando {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #fed7aa;
+    border-top-color: #9a3412;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .rodape {
+    text-align: center;
+    margin-top: 28px;
+    font-size: 0.78rem;
+    color: #bbb;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo">
+    <h1>Virtus Exec</h1>
+    <span>Busca Inteligente de Candidatos</span>
+  </div>
+
+  <div class="card">
+    <h2>Nova busca</h2>
+    <p>Preencha o perfil desejado. Os candidatos serão enviados para <strong>ti@virtusexec.com.br</strong> com os links do LinkedIn.</p>
+
+    <div class="field">
+      <label>Cargo / Perfil *</label>
+      <input type="text" id="cargo" placeholder="Ex: Analista de Marketing, Desenvolvedor Python..." />
+    </div>
+
+    <div class="field">
+      <label>Cidade</label>
+      <input type="text" id="cidade" placeholder="Campinas" value="Campinas" />
+    </div>
+
+    <div class="field">
+      <label>Idioma</label>
+      <input type="text" id="idioma" placeholder="inglês" value="inglês" />
+    </div>
+
+    <div class="field">
+      <label>Habilidades extras <span style="font-weight:300;text-transform:none;letter-spacing:0;">(opcional)</span></label>
+      <input type="text" id="habilidades" placeholder="Ex: Excel, Salesforce, liderança..." />
+      <div class="hint">Separe por vírgula se quiser mais de uma</div>
+    </div>
+
+    <button id="btn" onclick="buscar()">🔍 Buscar e enviar por e-mail</button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="rodape">Resultados buscados via Google • Open to Work • LinkedIn</div>
+</div>
+
+<script>
+async function buscar() {
+  const cargo = document.getElementById("cargo").value.trim();
+  const cidade = document.getElementById("cidade").value.trim() || "Campinas";
+  const idioma = document.getElementById("idioma").value.trim() || "inglês";
+  const habilidades = document.getElementById("habilidades").value.trim();
+  const btn = document.getElementById("btn");
+  const status = document.getElementById("status");
+
+  if (!cargo) {
+    status.className = "status erro";
+    status.innerHTML = "⚠️ Informe o cargo ou perfil desejado.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.className = "status carregando";
+  status.innerHTML = '<div class="spinner"></div> Buscando candidatos no LinkedIn... isso pode levar alguns segundos.';
+
+  try {
+    const resp = await fetch("/buscar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cargo, cidade, idioma, habilidades })
+    });
+
+    const data = await resp.json();
+
+    if (data.ok) {
+      status.className = "status sucesso";
+      status.innerHTML = `✅ <strong>${data.total} candidatos encontrados!</strong><br>Lista enviada para <strong>ti@virtusexec.com.br</strong>. Verifique sua caixa de entrada.`;
+    } else {
+      status.className = "status erro";
+      status.innerHTML = `❌ Erro: ${data.mensagem}`;
+    }
+  } catch (e) {
+    status.className = "status erro";
+    status.innerHTML = "❌ Falha na conexão. Tente novamente.";
+  }
+
+  btn.disabled = false;
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter") buscar();
+});
+</script>
+
+</body>
+</html>
