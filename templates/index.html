@@ -7,192 +7,114 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
     --vermelho: #B22222;
     --vermelho-escuro: #8B0000;
-    --vermelho-claro: #dc3545;
     --creme: #FDF8F3;
     --cinza: #6c757d;
     --branco: #ffffff;
     --sombra: 0 4px 24px rgba(178,34,34,0.10);
   }
-
   body {
     font-family: 'DM Sans', sans-serif;
     background: var(--creme);
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     padding: 40px 20px;
   }
+  .container { width: 100%; max-width: 700px; margin: auto; }
+  .logo { text-align: center; margin-bottom: 36px; }
+  .logo h1 { font-family: 'Playfair Display', serif; font-size: 2.2rem; color: var(--vermelho-escuro); }
+  .logo span { display: block; font-size: 0.85rem; color: var(--cinza); font-weight: 300; margin-top: 4px; letter-spacing: 2px; text-transform: uppercase; }
+  .card { background: var(--branco); border-radius: 16px; padding: 40px; box-shadow: var(--sombra); border-top: 4px solid var(--vermelho); margin-bottom: 24px; }
+  .card h2 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #1a1a1a; margin-bottom: 6px; }
+  .card p { font-size: 0.88rem; color: var(--cinza); margin-bottom: 28px; line-height: 1.5; }
+  .field { margin-bottom: 18px; }
+  label { display: block; font-size: 0.78rem; font-weight: 500; color: #333; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px; }
+  input { width: 100%; padding: 12px 16px; border: 1.5px solid #e0e0e0; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: #1a1a1a; background: #fafafa; transition: border-color 0.2s; outline: none; }
+  input:focus { border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(178,34,34,0.08); background: white; }
+  input::placeholder { color: #bbb; }
+  .hint { font-size: 0.75rem; color: #aaa; margin-top: 4px; }
 
-  .container {
-    width: 100%;
-    max-width: 560px;
-  }
-
-  .logo {
-    text-align: center;
-    margin-bottom: 36px;
-  }
-
-  .logo h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.2rem;
-    color: var(--vermelho-escuro);
-    letter-spacing: -0.5px;
-  }
-
-  .logo span {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--cinza);
-    font-weight: 300;
-    margin-top: 4px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-
-  .card {
-    background: var(--branco);
-    border-radius: 16px;
-    padding: 40px;
-    box-shadow: var(--sombra);
-    border-top: 4px solid var(--vermelho);
-  }
-
-  .card h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    color: #1a1a1a;
-    margin-bottom: 6px;
-  }
-
-  .card p {
-    font-size: 0.88rem;
-    color: var(--cinza);
-    margin-bottom: 28px;
-    line-height: 1.5;
-  }
-
-  .field {
-    margin-bottom: 18px;
-  }
-
-  label {
-    display: block;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: #333;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-  }
-
-  input {
-    width: 100%;
-    padding: 12px 16px;
+  .toggle-email {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #fafafa;
     border: 1.5px solid #e0e0e0;
     border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.95rem;
-    color: #1a1a1a;
-    background: #fafafa;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    outline: none;
+    margin-bottom: 18px;
+    cursor: pointer;
+    transition: border-color 0.2s;
   }
-
-  input:focus {
-    border-color: var(--vermelho);
-    box-shadow: 0 0 0 3px rgba(178,34,34,0.08);
-    background: white;
-  }
-
-  input::placeholder { color: #bbb; }
-
-  .hint {
-    font-size: 0.75rem;
-    color: #aaa;
-    margin-top: 4px;
-  }
+  .toggle-email:hover { border-color: var(--vermelho); }
+  .toggle-email input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--vermelho); cursor: pointer; }
+  .toggle-email label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 0.9rem; font-weight: 400; color: #444; cursor: pointer; }
 
   button {
-    width: 100%;
-    padding: 14px;
-    background: var(--vermelho);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    margin-top: 8px;
-    transition: background 0.2s, transform 0.1s;
-    letter-spacing: 0.3px;
+    width: 100%; padding: 14px; background: var(--vermelho); color: white; border: none;
+    border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 500;
+    cursor: pointer; transition: background 0.2s, transform 0.1s;
   }
-
   button:hover { background: var(--vermelho-escuro); }
   button:active { transform: scale(0.98); }
   button:disabled { background: #ccc; cursor: not-allowed; }
 
-  .status {
-    margin-top: 20px;
-    padding: 14px 18px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    display: none;
-    line-height: 1.5;
-  }
+  .status { margin-top: 20px; padding: 14px 18px; border-radius: 8px; font-size: 0.9rem; display: none; }
+  .status.carregando { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; display: flex; align-items: center; gap: 10px; }
+  .status.erro { background: #fff1f2; border: 1px solid #fca5a5; color: #991b1b; display: block; }
 
-  .status.sucesso {
-    background: #f0fdf4;
-    border: 1px solid #86efac;
-    color: #166534;
-    display: block;
-  }
-
-  .status.erro {
-    background: #fff1f2;
-    border: 1px solid #fca5a5;
-    color: #991b1b;
-    display: block;
-  }
-
-  .status.carregando {
-    background: #fff7ed;
-    border: 1px solid #fed7aa;
-    color: #9a3412;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #fed7aa;
-    border-top-color: #9a3412;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
-  }
-
+  .spinner { width: 18px; height: 18px; border: 2px solid #fed7aa; border-top-color: #9a3412; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .rodape {
-    text-align: center;
-    margin-top: 28px;
-    font-size: 0.78rem;
-    color: #bbb;
+  /* Resultados */
+  .resultados { display: none; }
+  .resultados-header {
+    background: var(--vermelho);
+    padding: 20px 24px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
+  .resultados-header h3 { color: white; font-family: 'Playfair Display', serif; font-size: 1.2rem; }
+  .resultados-header span { color: #ffcccc; font-size: 0.85rem; }
+  .email-badge { background: rgba(255,255,255,0.2); color: white; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; margin-top: 4px; display: inline-block; }
+
+  .candidato {
+    background: white;
+    padding: 18px 24px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    transition: background 0.15s;
+  }
+  .candidato:hover { background: #fdf8f3; }
+  .candidato:last-child { border-bottom: none; border-radius: 0 0 12px 12px; }
+  .num { font-size: 0.8rem; color: #ccc; font-weight: 500; min-width: 20px; padding-top: 2px; }
+  .info { flex: 1; }
+  .info strong { display: block; font-size: 0.95rem; color: #1a1a1a; margin-bottom: 4px; }
+  .info small { font-size: 0.8rem; color: #888; line-height: 1.4; }
+  .ver-perfil {
+    color: var(--vermelho);
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-decoration: none;
+    white-space: nowrap;
+    padding: 6px 12px;
+    border: 1.5px solid var(--vermelho);
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .ver-perfil:hover { background: var(--vermelho); color: white; }
+
+  .nenhum { background: white; padding: 40px; text-align: center; color: #999; border-radius: 0 0 12px 12px; }
+
+  .rodape { text-align: center; margin-top: 28px; font-size: 0.78rem; color: #bbb; }
 </style>
 </head>
 <body>
-
 <div class="container">
   <div class="logo">
     <h1>Virtus Exec</h1>
@@ -201,32 +123,46 @@
 
   <div class="card">
     <h2>Nova busca</h2>
-    <p>Preencha o perfil desejado. Os candidatos serão enviados para <strong>ti@virtusexec.com.br</strong> com os links do LinkedIn.</p>
+    <p>Preencha o perfil desejado e veja os candidatos do LinkedIn aqui mesmo.</p>
 
     <div class="field">
       <label>Cargo / Perfil *</label>
-      <input type="text" id="cargo" placeholder="Ex: Analista de Marketing, Desenvolvedor Python..." />
+      <input type="text" id="cargo" placeholder="Ex: Advogado Tributário, Analista de Marketing..." />
     </div>
-
     <div class="field">
-      <label>Cidade</label>
+      <label>Cidade / Região</label>
       <input type="text" id="cidade" placeholder="Campinas" value="Campinas" />
+      <div class="hint">Digite "Campinas" ou "Valinhos" para buscar em toda a região automaticamente</div>
     </div>
-
     <div class="field">
       <label>Idioma</label>
       <input type="text" id="idioma" placeholder="inglês" value="inglês" />
     </div>
-
     <div class="field">
       <label>Habilidades extras <span style="font-weight:300;text-transform:none;letter-spacing:0;">(opcional)</span></label>
-      <input type="text" id="habilidades" placeholder="Ex: Excel, Salesforce, liderança..." />
-      <div class="hint">Separe por vírgula se quiser mais de uma</div>
+      <input type="text" id="habilidades" placeholder="Ex: SAP, liderança, Excel..." />
+      <div class="hint">Separe por vírgula. A primeira habilidade é usada como filtro principal.</div>
     </div>
 
-    <button id="btn" onclick="buscar()">🔍 Buscar e enviar por e-mail</button>
+    <div class="toggle-email" onclick="document.getElementById('chk-email').click()">
+      <input type="checkbox" id="chk-email" onclick="event.stopPropagation()">
+      <label for="chk-email">Enviar lista também para <strong>ti@virtusexec.com.br</strong></label>
+    </div>
 
+    <button id="btn" onclick="buscar()">🔍 Buscar candidatos</button>
     <div id="status" class="status"></div>
+  </div>
+
+  <div class="resultados" id="resultados">
+    <div class="resultados-header">
+      <div>
+        <h3 id="res-titulo">Candidatos encontrados</h3>
+        <span id="res-subtitulo"></span>
+        <div id="email-badge" class="email-badge" style="display:none;">✉️ Lista enviada para ti@virtusexec.com.br</div>
+      </div>
+      <span id="res-total" style="font-size:1.8rem;font-weight:700;color:white;"></span>
+    </div>
+    <div id="lista-candidatos"></div>
   </div>
 
   <div class="rodape">Resultados buscados via Google • Open to Work • LinkedIn</div>
@@ -238,47 +174,80 @@ async function buscar() {
   const cidade = document.getElementById("cidade").value.trim() || "Campinas";
   const idioma = document.getElementById("idioma").value.trim() || "inglês";
   const habilidades = document.getElementById("habilidades").value.trim();
+  const enviarEmail = document.getElementById("chk-email").checked;
   const btn = document.getElementById("btn");
   const status = document.getElementById("status");
 
   if (!cargo) {
     status.className = "status erro";
+    status.style.display = "block";
     status.innerHTML = "⚠️ Informe o cargo ou perfil desejado.";
     return;
   }
 
+  document.getElementById("resultados").style.display = "none";
   btn.disabled = true;
   status.className = "status carregando";
-  status.innerHTML = '<div class="spinner"></div> Buscando candidatos no LinkedIn... isso pode levar alguns segundos.';
+  status.style.display = "flex";
+  status.innerHTML = '<div class="spinner"></div> Buscando candidatos no LinkedIn...';
 
   try {
     const resp = await fetch("/buscar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cargo, cidade, idioma, habilidades })
+      body: JSON.stringify({ cargo, cidade, idioma, habilidades, enviar_email: enviarEmail })
     });
 
     const data = await resp.json();
+    status.style.display = "none";
 
     if (data.ok) {
-      status.className = "status sucesso";
-      status.innerHTML = `✅ <strong>${data.total} candidatos encontrados!</strong><br>Lista enviada para <strong>ti@virtusexec.com.br</strong>. Verifique sua caixa de entrada.`;
+      exibirResultados(data, cargo, cidade, enviarEmail);
     } else {
       status.className = "status erro";
-      status.innerHTML = `❌ Erro: ${data.mensagem}`;
+      status.style.display = "block";
+      status.innerHTML = `❌ ${data.mensagem}`;
     }
   } catch (e) {
     status.className = "status erro";
+    status.style.display = "block";
     status.innerHTML = "❌ Falha na conexão. Tente novamente.";
   }
 
   btn.disabled = false;
 }
 
-document.addEventListener("keydown", e => {
-  if (e.key === "Enter") buscar();
-});
-</script>
+function exibirResultados(data, cargo, cidade, emailEnviado) {
+  const box = document.getElementById("resultados");
+  const lista = document.getElementById("lista-candidatos");
 
+  document.getElementById("res-titulo").textContent = `${cargo} — ${cidade}`;
+  document.getElementById("res-subtitulo").textContent = `${data.total} perfis encontrados`;
+  document.getElementById("res-total").textContent = data.total;
+
+  const badge = document.getElementById("email-badge");
+  badge.style.display = emailEnviado && data.total > 0 ? "inline-block" : "none";
+
+  if (!data.candidatos || data.candidatos.length === 0) {
+    lista.innerHTML = '<div class="nenhum">Nenhum candidato encontrado. Tente termos mais amplos.</div>';
+  } else {
+    lista.innerHTML = data.candidatos.map((c, i) => `
+      <div class="candidato">
+        <div class="num">${i + 1}</div>
+        <div class="info">
+          <strong>${c.nome}</strong>
+          <small>${c.resumo}</small>
+        </div>
+        <a href="${c.link}" target="_blank" class="ver-perfil">Ver perfil →</a>
+      </div>
+    `).join("");
+  }
+
+  box.style.display = "block";
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+document.addEventListener("keydown", e => { if (e.key === "Enter") buscar(); });
+</script>
 </body>
 </html>
