@@ -10,6 +10,25 @@ REMETENTE = os.environ.get("EMAIL_REMETENTE")
 SENDGRID_KEY = os.environ.get("SENDGRID_KEY")
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 
+REGIOES = {
+    "campinas": "Campinas OR Valinhos OR Vinhedo OR Indaiatuba OR Sumaré OR Hortolândia OR Americana OR Paulínia OR Jundiaí",
+    "valinhos": "Campinas OR Valinhos OR Vinhedo OR Indaiatuba",
+    "são paulo": "São Paulo OR SP",
+    "default": "{cidade}"
+}
+
+def montar_query(cargo, cidade, habilidades, idioma):
+    cidade_lower = cidade.lower()
+    regiao = REGIOES.get(cidade_lower, REGIOES["default"].format(cidade=cidade))
+    query = f'site:linkedin.com/in "{cargo}" ({regiao}) "open to work"'
+    if idioma and idioma.lower() not in ["português", "portugues", ""]:
+        query += f' "{idioma}"'
+    if habilidades:
+        primeira = habilidades.split(",")[0].strip()
+        if primeira:
+            query += f' "{primeira}"'
+    return query
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -21,23 +40,19 @@ def buscar():
     cidade = data.get("cidade", "Campinas")
     habilidades = data.get("habilidades", "")
     idioma = data.get("idioma", "inglês")
+    enviar_email = data.get("enviar_email", False)
 
     if not cargo:
         return jsonify({"ok": False, "mensagem": "Cargo obrigatório"}), 400
 
-    query = f'site:linkedin.com/in "open to work" "{cidade}" "{cargo}"'
-    if idioma:
-        query += f' "{idioma}"'
-    if habilidades:
-        query += f' "{habilidades}"'
-
+    query = montar_query(cargo, cidade, habilidades, idioma)
     busca_label = f"{cargo} | {cidade} | {idioma}"
 
     try:
         resp = requests.get("https://serpapi.com/search", params={
             "q": query,
             "api_key": SERPAPI_KEY,
-            "num": 5,
+            "num": 10,
             "hl": "pt",
             "gl": "br"
         }, timeout=25)
@@ -45,22 +60,24 @@ def buscar():
     except Exception as e:
         return jsonify({"ok": False, "mensagem": f"Erro na busca: {str(e)}"}), 500
 
-    candidatos = [r for r in resultados if "linkedin.com/in/" in r.get("link", "")]
+    candidatos = []
+    for r in resultados:
+        if "linkedin.com/in/" in r.get("link", ""):
+            candidatos.append({
+                "nome": r.get("title", "").split(" - ")[0].strip(),
+                "link": r.get("link", ""),
+                "resumo": r.get("snippet", "")
+            })
 
-    if not candidatos:
-        corpo = f"<p>Nenhum candidato encontrado para: <strong>{busca_label}</strong></p>"
-    else:
+    if enviar_email and candidatos:
         linhas = ""
         for i, c in enumerate(candidatos, 1):
-            nome = c.get("title", "").split(" - ")[0].strip()
-            link = c.get("link", "")
-            resumo = c.get("snippet", "")
             linhas += f"""<tr>
-                <td style="padding:10px;border-bottom:1px solid #eee;">{i}</td>
-                <td style="padding:10px;border-bottom:1px solid #eee;"><strong>{nome}</strong><br>
-                <small style="color:#666;">{resumo}</small></td>
+                <td style="padding:10px;border-bottom:1px solid #eee;color:#999;">{i}</td>
+                <td style="padding:10px;border-bottom:1px solid #eee;"><strong>{c['nome']}</strong><br>
+                <small style="color:#666;">{c['resumo']}</small></td>
                 <td style="padding:10px;border-bottom:1px solid #eee;">
-                <a href="{link}" style="color:#B22222;font-weight:bold;">Ver perfil →</a></td>
+                <a href="{c['link']}" style="color:#B22222;font-weight:bold;">Ver perfil →</a></td>
             </tr>"""
 
         corpo = f"""<div style="font-family:Arial,sans-serif;max-width:700px;margin:auto;">
@@ -82,30 +99,27 @@ def buscar():
           </div>
         </div>"""
 
-    try:
-        sg_resp = requests.post(
-            "https://api.sendgrid.com/v3/mail/send",
-            headers={
-                "Authorization": f"Bearer {SENDGRID_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "personalizations": [{"to": [{"email": DESTINATARIO}]}],
-                "from": {"email": REMETENTE},
-                "subject": f"[Virtus Exec] {cargo} | {cidade} — {datetime.now().strftime('%d/%m/%Y')}",
-                "content": [{"type": "text/html", "value": corpo}]
-            },
-            timeout=15
-        )
+        try:
+            requests.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                headers={"Authorization": f"Bearer {SENDGRID_KEY}", "Content-Type": "application/json"},
+                json={
+                    "personalizations": [{"to": [{"email": DESTINATARIO}]}],
+                    "from": {"email": REMETENTE},
+                    "subject": f"[Virtus Exec] {cargo} | {cidade} — {datetime.now().strftime('%d/%m/%Y')}",
+                    "content": [{"type": "text/html", "value": corpo}]
+                },
+                timeout=15
+            )
+        except Exception as e:
+            print(f"Erro e-mail: {e}")
 
-        if sg_resp.status_code in [200, 202]:
-            return jsonify({"ok": True, "total": len(candidatos),
-                "mensagem": f"{len(candidatos)} candidatos encontrados! Lista enviada para {DESTINATARIO}."})
-        else:
-            return jsonify({"ok": False, "mensagem": f"Erro SendGrid: {sg_resp.text}"}), 500
-
-    except Exception as e:
-        return jsonify({"ok": False, "mensagem": f"Erro ao enviar: {str(e)}"}), 500
+    return jsonify({
+        "ok": True,
+        "total": len(candidatos),
+        "candidatos": candidatos,
+        "email_enviado": enviar_email and len(candidatos) > 0
+    })
 
 if __name__ == "__main__":
     app.run(debug=False)
