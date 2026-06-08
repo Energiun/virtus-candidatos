@@ -10,12 +10,21 @@ REMETENTE = os.environ.get("EMAIL_REMETENTE")
 SENDGRID_KEY = os.environ.get("SENDGRID_KEY")
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 
-def busca_serpapi(query):
+REGIOES = {
+    "campinas": "Campinas OR Valinhos OR Vinhedo OR Indaiatuba OR Paulínia OR Sumaré OR Hortolândia OR Americana OR Jundiaí",
+    "valinhos": "Campinas OR Valinhos OR Vinhedo OR Indaiatuba OR Paulínia",
+    "jundiaí": "Jundiaí OR Itupeva OR Várzea Paulista OR Campo Limpo Paulista",
+    "sorocaba": "Sorocaba OR Votorantim OR Itu OR Boituva",
+    "ribeirão preto": "Ribeirão Preto OR Sertãozinho OR Jaboticabal",
+}
+
+def busca_serpapi(query, start=0):
     try:
         resp = requests.get("https://serpapi.com/search", params={
             "q": query,
             "api_key": SERPAPI_KEY,
             "num": 10,
+            "start": start,
             "hl": "pt",
             "gl": "br"
         }, timeout=25)
@@ -23,22 +32,24 @@ def busca_serpapi(query):
     except:
         return []
 
-def montar_candidatos(resultados, cargo_lower):
-    candidatos = {}
-    for r in resultados:
-        link = r.get("link", "")
-        titulo = r.get("title", "").lower()
-        snippet = r.get("snippet", "").lower()
-        # Só aceita se for perfil LinkedIn E cargo aparecer no título ou snippet
-        if "linkedin.com/in/" in link and cargo_lower in titulo or cargo_lower in snippet:
-            if link not in candidatos:
-                candidatos[link] = {
-                    "nome": r.get("title", "").split(" - ")[0].strip(),
-                    "link": link,
-                    "resumo": r.get("snippet", ""),
-                    "titulo": r.get("title", "")
-                }
-    return candidatos
+def extras_para_query(idioma, habilidades, empresa):
+    partes = []
+    if idioma:
+        i = idioma.lower().strip()
+        if i in ["inglês", "ingles", "english"]:
+            partes.append('("inglês" OR "english" OR "inglês avançado" OR "inglês fluente")')
+        elif i in ["espanhol", "spanish"]:
+            partes.append('("espanhol" OR "spanish" OR "espanhol avançado")')
+        else:
+            partes.append(f'"{idioma}"')
+    if habilidades:
+        for h in habilidades.split(","):
+            h = h.strip()
+            if h:
+                partes.append(f'"{h}"')
+    if empresa:
+        partes.append(f'"{empresa.strip()}"')
+    return " ".join(partes)
 
 @app.route("/")
 def index():
@@ -49,76 +60,96 @@ def buscar():
     data = request.json
     cargo = data.get("cargo", "").strip()
     cidade = data.get("cidade", "Campinas").strip()
-    habilidades = data.get("habilidades", "").strip()
     idioma = data.get("idioma", "").strip()
+    habilidades = data.get("habilidades", "").strip()
+    empresa = data.get("empresa", "").strip()
     enviar_email = data.get("enviar_email", False)
 
-    if not cargo:
-        return jsonify({"ok": False, "mensagem": "Cargo obrigatório"}), 400
+    if not cargo or not cidade:
+        return jsonify({"ok": False, "mensagem": "Cargo e cidade são obrigatórios"}), 400
 
-    cargo_lower = cargo.lower()
+    cidade_lower = cidade.lower()
+    regiao = REGIOES.get(cidade_lower, cidade)
+    extras = extras_para_query(idioma, habilidades, empresa)
 
-    # Localização exata como o LinkedIn gera nos perfis
-    loc1 = f'"{cidade}, São Paulo, Brasil"'
-    loc2 = f'"{cidade} e Região"'
+    # 6 queries cruzadas: cargo com/sem aspas x cidade exata/região/estado
+    loc_exata = f'"{cidade}, São Paulo, Brasil"'
+    loc_regiao = f'"{cidade} e Região"'
+    loc_estado = f'"São Paulo"'
+    regiao_or = f'({regiao})'
 
-    # Busca 1: cargo exato + localização formato 1
-    q1 = f'site:linkedin.com/in "{cargo}" {loc1}'
+    queries = [
+        # Cargo exato + cidade exata (maior precisão)
+        (f'site:linkedin.com/in "{cargo}" {loc_exata} {extras}', 3),
+        (f'site:linkedin.com/in "{cargo}" {loc_exata} {extras}', 2, 10),  # página 2
+        # Cargo exato + região
+        (f'site:linkedin.com/in "{cargo}" {loc_regiao} {extras}', 2),
+        # Cargo exato + cidades da região
+        (f'site:linkedin.com/in "{cargo}" {regiao_or} {extras}', 2),
+        # Cargo sem aspas + cidade exata
+        (f'site:linkedin.com/in {cargo} {loc_exata} {extras}', 1),
+        # Cargo sem aspas + região
+        (f'site:linkedin.com/in {cargo} {regiao_or} {extras}', 1),
+    ]
 
-    # Busca 2: cargo exato + localização formato 2
-    q2 = f'site:linkedin.com/in "{cargo}" {loc2}'
-
-    # Busca 3: variação do cargo (sem aspas) + localização 1 — pega variações do título
-    q3 = f'site:linkedin.com/in {cargo} {loc1}'
-
-    # Executa as 3 buscas
-    r1 = busca_serpapi(q1)
-    r2 = busca_serpapi(q2)
-    r3 = busca_serpapi(q3)
-
-    # Cruza e deduplica — prioriza quem apareceu em mais de uma busca
     todos = {}
-    for r in r1:
-        link = r.get("link", "")
-        if "linkedin.com/in/" in link:
-            todos[link] = {"data": r, "score": todos.get(link, {}).get("score", 0) + 2}
+    for q in queries:
+        query_str = q[0].strip()
+        score_base = q[1]
+        start = q[2] if len(q) > 2 else 0
+        resultados = busca_serpapi(query_str, start)
+        for r in resultados:
+            link = r.get("link", "")
+            if "linkedin.com/in/" not in link:
+                continue
+            titulo = r.get("title", "").lower()
+            snippet = r.get("snippet", "").lower()
+            cargo_lower = cargo.lower()
+            # Cargo DEVE aparecer no título ou snippet
+            if cargo_lower not in titulo and cargo_lower not in snippet:
+                continue
+            # Extras obrigatórios: verifica se aparecem no snippet/título
+            passou_extras = True
+            if idioma:
+                i = idioma.lower()
+                termos_idioma = [i, "avançado", "fluente", "advanced", "fluent"]
+                if not any(t in titulo + snippet for t in termos_idioma):
+                    passou_extras = False
+            if habilidades and passou_extras:
+                for h in habilidades.split(","):
+                    h = h.strip().lower()
+                    if h and h not in titulo + snippet:
+                        passou_extras = False
+                        break
+            if empresa and passou_extras:
+                if empresa.lower() not in titulo + snippet:
+                    passou_extras = False
 
-    for r in r2:
-        link = r.get("link", "")
-        if "linkedin.com/in/" in link:
-            if link in todos:
-                todos[link]["score"] += 2
-            else:
-                todos[link] = {"data": r, "score": 2}
+            if link not in todos:
+                todos[link] = {
+                    "nome": r.get("title", "").split(" - ")[0].strip(),
+                    "link": link,
+                    "resumo": r.get("snippet", ""),
+                    "score": 0,
+                    "extras_ok": passou_extras
+                }
+            todos[link]["score"] += score_base
+            if passou_extras:
+                todos[link]["extras_ok"] = True
 
-    for r in r3:
-        link = r.get("link", "")
-        if "linkedin.com/in/" in link:
-            if link in todos:
-                todos[link]["score"] += 1
-            else:
-                todos[link] = {"data": r, "score": 1}
+    # Separa: quem passou nos extras primeiro, depois os demais
+    com_extras = [c for c in todos.values() if c["extras_ok"]]
+    sem_extras = [c for c in todos.values() if not c["extras_ok"]]
 
-    # Filtra por cargo no título ou snippet e ordena por score
-    candidatos = []
-    for link, item in todos.items():
-        r = item["data"]
-        titulo = r.get("title", "").lower()
-        snippet = r.get("snippet", "").lower()
-        if cargo_lower in titulo or cargo_lower in snippet:
-            candidatos.append({
-                "nome": r.get("title", "").split(" - ")[0].strip(),
-                "link": link,
-                "resumo": r.get("snippet", ""),
-                "score": item["score"]
-            })
+    com_extras.sort(key=lambda x: x["score"], reverse=True)
+    sem_extras.sort(key=lambda x: x["score"], reverse=True)
 
-    # Ordena: quem apareceu em mais buscas primeiro
-    candidatos.sort(key=lambda x: x["score"], reverse=True)
+    candidatos = com_extras + sem_extras
 
-    # Remove o score da resposta final
+    # Remove campos internos
     for c in candidatos:
         del c["score"]
+        del c["extras_ok"]
 
     # Envia e-mail se solicitado
     if enviar_email and candidatos:
@@ -129,14 +160,14 @@ def buscar():
                 <td style="padding:10px;border-bottom:1px solid #eee;"><strong>{c['nome']}</strong><br>
                 <small style="color:#666;">{c['resumo']}</small></td>
                 <td style="padding:10px;border-bottom:1px solid #eee;">
-                <a href="{c['link']}" style="color:#B22222;font-weight:bold;">Ver perfil →</a></td>
+                <a href="{c['link']}" style="color:#1a3a5c;font-weight:bold;">Ver perfil →</a></td>
             </tr>"""
-
         corpo = f"""<div style="font-family:Arial,sans-serif;max-width:700px;margin:auto;">
-          <div style="background:#B22222;padding:20px;border-radius:8px 8px 0 0;">
-            <h2 style="color:white;margin:0;">🎯 Virtus Exec — Candidatos Encontrados</h2>
-            <p style="color:#ffcccc;margin:5px 0 0;">Busca: <strong>{cargo} | {cidade}</strong></p>
-            <p style="color:#ffcccc;margin:2px 0 0;font-size:12px;">{datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
+          <div style="background:#1a3a5c;padding:20px;border-radius:8px 8px 0 0;">
+            <h2 style="color:white;margin:0;">VIRTUS EXEC</h2>
+            <p style="color:#a8c4e0;margin:4px 0 0;font-size:13px;">Busca cruzada de candidatos</p>
+            <p style="color:#a8c4e0;margin:8px 0 0;">Busca: <strong>{cargo} | {cidade}</strong></p>
+            <p style="color:#a8c4e0;margin:2px 0 0;font-size:12px;">{datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
           </div>
           <table style="width:100%;border-collapse:collapse;background:white;">
             <tr style="background:#f5f5f5;">
@@ -149,7 +180,6 @@ def buscar():
             <small style="color:#999;">Total: {len(candidatos)} candidatos • {datetime.now().strftime("%d/%m/%Y %H:%M")}</small>
           </div>
         </div>"""
-
         try:
             requests.post(
                 "https://api.sendgrid.com/v3/mail/send",
