@@ -59,6 +59,24 @@ def limpar_duplicados(lista):
 
     return resultado
 
+def limitar_search_query(texto, limite=280):
+    texto = " ".join(str(texto or "").split()).strip()
+
+    if len(texto) <= limite:
+        return texto
+
+    palavras_query = texto.split()
+    resultado = ""
+
+    for palavra in palavras_query:
+        tentativa = (resultado + " " + palavra).strip()
+
+        if len(tentativa) > limite:
+            break
+
+        resultado = tentativa
+
+    return resultado.strip()
 
 def separar_termos(texto):
     if not texto:
@@ -566,7 +584,7 @@ def montar_query_segmento(cargo, cidade, segmento, empresa_anterior, idioma, pal
     ]
 
     texto = " ".join([p for p in partes if p])
-    return texto.strip()
+    return limitar_search_query(texto, 280)
 
 
 def montar_inputs_busca(cargo, cidade, segmento="", empresa_anterior="", idioma="", palavras_chave=""):
