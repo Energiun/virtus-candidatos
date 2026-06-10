@@ -29,8 +29,25 @@ def normalizar(texto):
     return texto
 
 
+def corrigir_cidade(cidade):
+    cidade_limpa = cidade.strip()
+
+    correcoes = {
+        "campinas": "Campinas",
+        "paulinia": "Paulínia",
+        "paulínia": "Paulínia",
+        "jundiai": "Jundiaí",
+        "jundiaí": "Jundiaí",
+        "sao paulo": "São Paulo",
+        "são paulo": "São Paulo"
+    }
+
+    chave = normalizar(cidade_limpa)
+    return correcoes.get(chave, cidade_limpa)
+
+
 def formatar_localizacao_linkedin(cidade):
-    cidade = cidade.strip()
+    cidade = corrigir_cidade(cidade)
 
     if "," in cidade:
         return cidade
@@ -323,50 +340,60 @@ def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa, origem_
 
 
 def montar_inputs_busca(cargo, cidade, idioma="", habilidades="", empresa=""):
-    localizacao = formatar_localizacao_linkedin(cidade)
+    cidade_corrigida = corrigir_cidade(cidade)
+    localizacao_completa = formatar_localizacao_linkedin(cidade_corrigida)
 
     buscas = []
 
     cargo_base = cargo.strip()
 
-    # 1. Busca exata: cargo digitado + cidade
+    # 1. Busca exata com localização completa
     buscas.append({
         "nome": "exata",
         "input": {
             "searchQuery": cargo_base,
-            "locations": [localizacao],
+            "locations": [localizacao_completa],
             "currentJobTitles": [cargo_base],
             "profileScraperMode": "Full",
             "maxItems": MAX_ITEMS_TESTE
         }
     })
 
-    # 2. Busca ampla: cargo digitado + cidade, sem travar currentJobTitles
+    # 2. Busca ampla com localização completa
     buscas.append({
         "nome": "ampla",
         "input": {
             "searchQuery": cargo_base,
-            "locations": [localizacao],
+            "locations": [localizacao_completa],
             "profileScraperMode": "Full",
             "maxItems": MAX_ITEMS_TESTE
         }
     })
 
-    # 3. Busca comercial expandida
+    # 3. Busca fallback: cidade no texto, sem locations
+    buscas.append({
+        "nome": "fallback_cidade_texto",
+        "input": {
+            "searchQuery": f"{cargo_base} {cidade_corrigida}",
+            "profileScraperMode": "Full",
+            "maxItems": MAX_ITEMS_TESTE
+        }
+    })
+
+    # 4. Busca comercial expandida com cidade no texto
     cargo_n = normalizar(cargo_base)
 
-    if "venda" in cargo_n or "comercial" in cargo_n or "consultor" in cargo_n:
+    if "venda" in cargo_n or "comercial" in cargo_n or "consultor" in cargo_n or "executivo" in cargo_n:
         buscas.append({
             "nome": "comercial_expandida",
             "input": {
-                "searchQuery": "Consultor de Vendas OR Consultor Comercial OR Executivo de Vendas OR Representante Comercial OR Sales Consultant",
-                "locations": [localizacao],
+                "searchQuery": f"Consultor de Vendas Consultor Comercial Executivo de Vendas Representante Comercial Sales Consultant {cidade_corrigida}",
                 "profileScraperMode": "Full",
                 "maxItems": MAX_ITEMS_TESTE
             }
         })
 
-    # 4. Busca com extras: só roda se tiver extra preenchido
+    # 5. Busca com extras
     extras = []
 
     if habilidades:
@@ -382,8 +409,7 @@ def montar_inputs_busca(cargo, cidade, idioma="", habilidades="", empresa=""):
         buscas.append({
             "nome": "extras",
             "input": {
-                "searchQuery": f"{cargo_base} {' '.join(extras)}",
-                "locations": [localizacao],
+                "searchQuery": f"{cargo_base} {' '.join(extras)} {cidade_corrigida}",
                 "profileScraperMode": "Full",
                 "maxItems": MAX_ITEMS_TESTE
             }
