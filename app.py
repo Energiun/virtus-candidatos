@@ -8,6 +8,10 @@ from html import escape
 
 app = Flask(__name__)
 
+# =========================
+# CONFIGURAÇÕES
+# =========================
+
 DESTINATARIO = "ti@virtusexec.com.br"
 
 REMETENTE = os.environ.get("EMAIL_REMETENTE")
@@ -16,58 +20,116 @@ APIFY_KEY = os.environ.get("APIFY_KEY")
 
 APIFY_ACTOR = "harvestapi~linkedin-profile-search"
 
-# Teste econômico. Depois que funcionar, pode subir para 25.
-MAX_ITEMS_TESTE = 25
+# Quantos perfis por busca.
+# 25 = bom para teste real. Se quiser economizar, coloque 10.
+MAX_ITEMS_APIFY = int(os.environ.get("MAX_ITEMS_APIFY", "25"))
 
+# Segurança para não rodar buscas demais sem querer.
+MAX_BUSCAS_APIFY = int(os.environ.get("MAX_BUSCAS_APIFY", "4"))
+
+
+# =========================
+# FUNÇÕES DE TEXTO
+# =========================
 
 def normalizar(texto):
     if texto is None:
         return ""
+
     texto = str(texto).lower().strip()
     texto = unicodedata.normalize("NFD", texto)
     texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
     return texto
 
 
+def limpar_duplicados(lista):
+    vistos = set()
+    resultado = []
+
+    for item in lista:
+        if not item:
+            continue
+
+        item_limpo = str(item).strip()
+        chave = normalizar(item_limpo)
+
+        if chave and chave not in vistos:
+            vistos.add(chave)
+            resultado.append(item_limpo)
+
+    return resultado
+
+
+def separar_termos(texto):
+    if not texto:
+        return []
+
+    partes = []
+
+    for pedaco in str(texto).replace(";", ",").split(","):
+        termo = pedaco.strip()
+        if termo:
+            partes.append(termo)
+
+    return limpar_duplicados(partes)
+
+
 def corrigir_cidade(cidade):
     cidade_limpa = cidade.strip()
 
     correcoes = {
+        "cammpinas": "Campinas",
         "campinas": "Campinas",
         "paulinia": "Paulínia",
         "paulínia": "Paulínia",
+        "valinhos": "Valinhos",
+        "vinhedo": "Vinhedo",
         "jundiai": "Jundiaí",
         "jundiaí": "Jundiaí",
         "sao paulo": "São Paulo",
-        "são paulo": "São Paulo"
+        "são paulo": "São Paulo",
+        "ribeirao preto": "Ribeirão Preto",
+        "ribeirão preto": "Ribeirão Preto",
     }
 
     chave = normalizar(cidade_limpa)
     return correcoes.get(chave, cidade_limpa)
 
 
-def formatar_localizacao_linkedin(cidade):
-    cidade = corrigir_cidade(cidade)
+def formatar_localizacoes(cidade):
+    cidade_corrigida = corrigir_cidade(cidade)
 
-    if "," in cidade:
-        return cidade
+    opcoes = [
+        f"{cidade_corrigida}, São Paulo, Brazil",
+        f"{cidade_corrigida}, São Paulo, Brasil",
+        cidade_corrigida
+    ]
 
-    return f"{cidade}, São Paulo, Brazil"
+    return limpar_duplicados(opcoes)
 
 
 def palavras(texto):
     texto = normalizar(texto)
 
-    for ch in ["/", "-", "|", ",", ".", "(", ")", "[", "]", ";", ":"]:
+    for ch in ["/", "-", "|", ",", ".", "(", ")", "[", "]", ";", ":", "•", "·"]:
         texto = texto.replace(ch, " ")
 
     stop = {
-        "de", "da", "do", "das", "dos", "para", "com",
-        "uma", "por", "the", "and", "jr", "pl", "sr", "em"
+        "de", "da", "do", "das", "dos", "para", "com", "uma",
+        "por", "the", "and", "jr", "pl", "sr", "em", "na", "no",
+        "as", "os", "a", "o", "e"
     }
 
     return [p for p in texto.split() if len(p) >= 3 and p not in stop]
 
+
+def texto_tem(texto, termo):
+    return normalizar(termo) in normalizar(texto)
+
+
+# =========================
+# LEITURA DO PERFIL DO APIFY
+# =========================
 
 def pegar_nome(perfil):
     first = perfil.get("firstName", "") or perfil.get("first_name", "")
@@ -112,16 +174,24 @@ def pegar_localizacao_texto(perfil):
             partes.append(parsed.get("country", ""))
 
         for chave in [
-            "linkedinText", "text", "name", "location",
-            "full", "displayName", "raw"
+            "linkedinText",
+            "text",
+            "name",
+            "location",
+            "full",
+            "displayName",
+            "raw"
         ]:
             valor = location.get(chave)
             if valor:
                 partes.append(str(valor))
 
     for chave in [
-        "locationName", "geoLocationName", "city",
-        "address", "locationText"
+        "locationName",
+        "geoLocationName",
+        "city",
+        "address",
+        "locationText"
     ]:
         valor = perfil.get(chave)
         if isinstance(valor, str):
@@ -140,6 +210,7 @@ def pegar_cargo_atual(perfil):
             if isinstance(item, dict):
                 pos = item.get("position") or item.get("title") or item.get("name")
                 empresa = item.get("companyName") or item.get("company")
+
                 if pos and empresa:
                     cargos.append(f"{pos} na {empresa}")
                 elif pos:
@@ -148,20 +219,25 @@ def pegar_cargo_atual(perfil):
     if isinstance(current_position, dict):
         pos = current_position.get("position") or current_position.get("title") or current_position.get("name")
         empresa = current_position.get("companyName") or current_position.get("company")
+
         if pos and empresa:
             cargos.append(f"{pos} na {empresa}")
         elif pos:
             cargos.append(str(pos))
 
     for chave in [
-        "headline", "occupation", "title", "position",
-        "jobTitle", "subTitle"
+        "headline",
+        "occupation",
+        "title",
+        "position",
+        "jobTitle",
+        "subTitle"
     ]:
         valor = perfil.get(chave)
         if valor:
             cargos.append(str(valor))
 
-    return " | ".join(cargos).strip()
+    return " | ".join(limpar_duplicados(cargos)).strip()
 
 
 def pegar_historico_texto(perfil):
@@ -186,14 +262,75 @@ def pegar_historico_texto(perfil):
     return " ".join(textos)
 
 
-def cidade_exata_bate(perfil, cidade):
-    localizacao = normalizar(pegar_localizacao_texto(perfil))
-    cidade_n = normalizar(cidade)
+def pegar_resumo(perfil):
+    return (
+        perfil.get("about", "")
+        or perfil.get("summary", "")
+        or perfil.get("description", "")
+        or ""
+    )
 
-    if not localizacao:
-        return False
 
-    return cidade_n in localizacao
+# =========================
+# LÓGICA DE CARGO / CIDADE / RANKING
+# =========================
+
+def cargo_eh_comercial(cargo):
+    c = normalizar(cargo)
+
+    termos = [
+        "venda", "vendas", "comercial", "consultor", "consultora",
+        "executivo", "executiva", "representante", "account",
+        "sales", "negocios", "negócios"
+    ]
+
+    return any(t in c for t in termos)
+
+
+def montar_titulos_cargo(cargo):
+    cargo_base = cargo.strip()
+
+    titulos = [cargo_base]
+
+    if cargo_eh_comercial(cargo_base):
+        titulos += [
+            "Consultor de vendas",
+            "Consultora de vendas",
+            "Consultor comercial",
+            "Consultora comercial",
+            "Executivo de vendas",
+            "Executiva de vendas",
+            "Representante comercial",
+            "Representante de vendas",
+            "Consultor de negócios",
+            "Consultora de negócios",
+            "Sales Consultant",
+            "Account Executive",
+            "Key Account"
+        ]
+
+    return limpar_duplicados(titulos)
+
+
+def cidade_bate(perfil, cidade):
+    cidade_corrigida = corrigir_cidade(cidade)
+    cidade_n = normalizar(cidade_corrigida)
+
+    localizacao = pegar_localizacao_texto(perfil)
+    localizacao_n = normalizar(localizacao)
+
+    if cidade_n and cidade_n in localizacao_n:
+        return True, "cidade exata", 60
+
+    # Fallback: às vezes a cidade aparece no texto do perfil.
+    texto_total = normalizar(
+        f"{pegar_cargo_atual(perfil)} {pegar_historico_texto(perfil)}"
+    )
+
+    if cidade_n and cidade_n in texto_total:
+        return True, "cidade citada no perfil", 35
+
+    return False, "", 0
 
 
 def cargo_bate(cargo_busca, cargo_atual, historico):
@@ -202,31 +339,23 @@ def cargo_bate(cargo_busca, cargo_atual, historico):
     hist_n = normalizar(historico)
     texto_total = f"{atual_n} {hist_n}"
 
-    # Cargo exato no cargo atual/headline
     if cargo_n and cargo_n in atual_n:
-        return True, 50, "cargo atual exato"
+        return True, "cargo atual exato", 60
 
-    # Cargo exato no histórico
     if cargo_n and cargo_n in hist_n:
-        return True, 25, "cargo no histórico"
+        return True, "cargo no histórico", 30
 
-    cargo_palavras = palavras(cargo_busca)
+    busca_comercial = cargo_eh_comercial(cargo_busca)
 
-    # Regra especial para vendas/comercial
-    busca_vendas = any(t in cargo_n for t in [
-        "venda", "vendas", "comercial", "consultor",
-        "executivo", "representante", "account"
-    ])
-
-    if busca_vendas:
+    if busca_comercial:
         termos_vendas = [
-            "venda", "vendas", "sales", "comercial"
+            "venda", "vendas", "sales", "comercial", "negocios", "negócios"
         ]
 
         termos_funcao = [
             "consultor", "consultora", "executivo", "executiva",
-            "representante", "key account", "account executive",
-            "consultant"
+            "representante", "account", "sales consultant",
+            "key account"
         ]
 
         tem_vendas_atual = any(t in atual_n for t in termos_vendas)
@@ -235,56 +364,85 @@ def cargo_bate(cargo_busca, cargo_atual, historico):
         tem_vendas_total = any(t in texto_total for t in termos_vendas)
         tem_funcao_total = any(t in texto_total for t in termos_funcao)
 
-        # Para "Consultor de vendas", exige função + vendas.
-        if "consultor" in cargo_n and "venda" in cargo_n:
-            if tem_funcao_atual and tem_vendas_atual:
-                return True, 45, "cargo atual compatível"
-
-            if tem_funcao_total and tem_vendas_total:
-                return True, 20, "histórico compatível"
-
-            return False, 0, ""
-
-        # Para outros cargos comerciais
-        if tem_funcao_atual and tem_vendas_atual:
-            return True, 40, "cargo atual comercial"
+        if tem_vendas_atual and tem_funcao_atual:
+            return True, "cargo atual comercial/vendas", 50
 
         if tem_vendas_atual:
-            return True, 30, "cargo atual em vendas"
+            return True, "cargo atual em vendas", 40
 
-        if tem_funcao_total and tem_vendas_total:
-            return True, 18, "histórico comercial"
+        if tem_vendas_total and tem_funcao_total:
+            return True, "histórico comercial/vendas", 25
 
-        return False, 0, ""
+        if tem_vendas_total:
+            return True, "histórico em vendas", 18
 
-    # Regra geral para outras vagas
+        return False, "", 0
+
+    cargo_palavras = palavras(cargo_busca)
+
     if cargo_palavras:
         acertos_atual = sum(1 for p in cargo_palavras if p in atual_n)
         acertos_total = sum(1 for p in cargo_palavras if p in texto_total)
 
         if acertos_atual / len(cargo_palavras) >= 0.7:
-            return True, 45, "cargo atual compatível"
+            return True, "cargo atual compatível", 50
 
         if acertos_total / len(cargo_palavras) >= 0.7:
-            return True, 20, "histórico compatível"
+            return True, "histórico compatível", 25
 
-    return False, 0, ""
+    return False, "", 0
 
 
-def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa, origem_busca):
+def pontuar_termos(texto_total, termos, pontos_por_termo, prefixo, limite=None):
+    score = 0
+    motivos = []
+    usados = 0
+
+    for termo in termos:
+        if not termo:
+            continue
+
+        if texto_tem(texto_total, termo):
+            score += pontos_por_termo
+            motivos.append(f"{prefixo}: {termo}")
+            usados += 1
+
+            if limite and usados >= limite:
+                break
+
+    return score, motivos
+
+
+def score_candidato(
+    perfil,
+    cargo,
+    cidade,
+    segmento,
+    empresa_anterior,
+    idioma,
+    palavras_chave,
+    origem_busca
+):
     score = 0
     motivos = []
 
-    if not cidade_exata_bate(perfil, cidade):
-        return None, []
-
-    score += 50
-    motivos.append("cidade exata")
-
     cargo_atual = pegar_cargo_atual(perfil)
     historico = pegar_historico_texto(perfil)
+    resumo = pegar_resumo(perfil)
 
-    ok_cargo, pontos_cargo, motivo_cargo = cargo_bate(cargo, cargo_atual, historico)
+    texto_total = f"{cargo_atual} {historico} {resumo}"
+
+    # 1. Cidade é filtro principal.
+    ok_cidade, motivo_cidade, pontos_cidade = cidade_bate(perfil, cidade)
+
+    if not ok_cidade:
+        return None, []
+
+    score += pontos_cidade
+    motivos.append(motivo_cidade)
+
+    # 2. Cargo é filtro principal.
+    ok_cargo, motivo_cargo, pontos_cargo = cargo_bate(cargo, cargo_atual, historico)
 
     if not ok_cargo:
         return None, []
@@ -292,105 +450,210 @@ def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa, origem_
     score += pontos_cargo
     motivos.append(motivo_cargo)
 
-    if origem_busca == "exata":
+    # 3. Origem da busca.
+    if origem_busca == "cargo_cidade_nativo":
         score += 20
-        motivos.append("busca exata")
+        motivos.append("busca nativa cargo/cidade")
+    elif origem_busca == "segmento_idiomas":
+        score += 12
+        motivos.append("busca por segmento")
+    elif origem_busca == "empresa_segmento":
+        score += 15
+        motivos.append("busca empresa/segmento")
+    elif origem_busca == "texto_livre":
+        score += 8
+        motivos.append("busca texto livre")
 
-    if origem_busca == "ampla":
-        score += 5
-        motivos.append("busca ampla")
-
+    # 4. Open to Work.
     if perfil.get("openToWork"):
         score += 10
         motivos.append("open to work")
 
-    texto_total = normalizar(f"{cargo_atual} {historico}")
+    # 5. Segmento desejado.
+    termos_segmento = separar_termos(segmento)
 
+    # Termos automáticos para vagas ligadas a escola de inglês/idiomas.
+    auto_termos_educacao = [
+        "curso de inglês",
+        "curso ingles",
+        "inglês",
+        "english",
+        "idiomas",
+        "escola de idiomas",
+        "educacional",
+        "educação",
+        "educacao",
+        "matrícula",
+        "matricula",
+        "captação de alunos",
+        "captacao de alunos",
+        "alunos",
+        "ensino",
+        "treinamento"
+    ]
+
+    termos_segmento += auto_termos_educacao
+    termos_segmento = limpar_duplicados(termos_segmento)
+
+    pontos, motivos_extra = pontuar_termos(
+        texto_total,
+        termos_segmento,
+        pontos_por_termo=12,
+        prefixo="segmento",
+        limite=4
+    )
+
+    score += pontos
+    motivos += motivos_extra
+
+    # 6. Empresa anterior desejada.
+    if empresa_anterior:
+        empresas = separar_termos(empresa_anterior)
+
+        pontos, motivos_extra = pontuar_termos(
+            texto_total,
+            empresas,
+            pontos_por_termo=35,
+            prefixo="empresa desejada",
+            limite=3
+        )
+
+        score += pontos
+        motivos += motivos_extra
+
+    # 7. Idioma.
     if idioma:
         idioma_n = normalizar(idioma)
 
-        if "ingles" in idioma_n:
-            if "ingles" in texto_total or "english" in texto_total:
-                score += 8
+        if "ingles" in idioma_n or "english" in idioma_n:
+            if "ingles" in normalizar(texto_total) or "english" in normalizar(texto_total):
+                score += 15
                 motivos.append("inglês citado")
-        elif idioma_n in texto_total:
-            score += 8
-            motivos.append(f"idioma: {idioma}")
+        else:
+            if idioma_n in normalizar(texto_total):
+                score += 10
+                motivos.append(f"idioma: {idioma}")
 
-    if habilidades:
-        for hab in habilidades.split(","):
-            hab = hab.strip()
-            if not hab:
-                continue
+    # 8. Palavras-chave.
+    termos_palavras = separar_termos(palavras_chave)
 
-            hab_n = normalizar(hab)
+    pontos, motivos_extra = pontuar_termos(
+        texto_total,
+        termos_palavras,
+        pontos_por_termo=8,
+        prefixo="palavra-chave",
+        limite=6
+    )
 
-            if hab_n in texto_total:
-                score += 8
-                motivos.append(f"skill: {hab}")
-
-    if empresa:
-        empresa_n = normalizar(empresa)
-
-        if empresa_n in texto_total:
-            score += 20
-            motivos.append(f"empresa: {empresa}")
+    score += pontos
+    motivos += motivos_extra
 
     return score, motivos
 
 
-def montar_inputs_busca(cargo, cidade, idioma="", habilidades="", empresa=""):
+# =========================
+# BUSCAS NO APIFY
+# =========================
+
+def montar_query_segmento(cargo, cidade, segmento, empresa_anterior, idioma, palavras_chave):
+    partes = [
+        cargo,
+        cidade,
+        segmento,
+        empresa_anterior,
+        idioma,
+        palavras_chave
+    ]
+
+    texto = " ".join([p for p in partes if p])
+    return texto.strip()
+
+
+def montar_inputs_busca(cargo, cidade, segmento="", empresa_anterior="", idioma="", palavras_chave=""):
+    cidade_corrigida = corrigir_cidade(cidade)
+    localizacoes = formatar_localizacoes(cidade_corrigida)
+    titulos = montar_titulos_cargo(cargo)
+
     buscas = []
 
-    cargo_base = cargo.strip()
-    cidade_base = cidade.strip()
-
-    # Busca 1: simples, sem locations
+    # Busca 1: mais parecida com o filtro nativo do LinkedIn.
+    # Cargo vai em currentJobTitles, cidade vai em locations.
     buscas.append({
-        "nome": "texto_livre",
+        "nome": "cargo_cidade_nativo",
         "input": {
-            "searchQuery": f"{cargo_base} {cidade_base}",
+            "searchQuery": cargo,
+            "locations": localizacoes,
+            "currentJobTitles": titulos,
             "profileScraperMode": "Full",
-            "maxItems": MAX_ITEMS_TESTE
+            "maxItems": MAX_ITEMS_APIFY
         }
     })
 
-    # Busca 2: cargo + cidade + variações comerciais, sem locations
-    cargo_n = normalizar(cargo_base)
+    # Busca 2: texto livre com cargo + cidade.
+    # Essa busca salva quando o campo locations do Apify falha.
+    buscas.append({
+        "nome": "texto_livre",
+        "input": {
+            "searchQuery": f"{cargo} {cidade_corrigida}",
+            "profileScraperMode": "Full",
+            "maxItems": MAX_ITEMS_APIFY
+        }
+    })
 
-    if "venda" in cargo_n or "comercial" in cargo_n or "consultor" in cargo_n or "executivo" in cargo_n:
+    # Busca 3: segmento/idiomas/empresa/palavras.
+    query_segmento = montar_query_segmento(
+        cargo,
+        cidade_corrigida,
+        segmento,
+        empresa_anterior,
+        idioma,
+        palavras_chave
+    )
+
+    if query_segmento and normalizar(query_segmento) != normalizar(f"{cargo} {cidade_corrigida}"):
         buscas.append({
-            "nome": "comercial_texto_livre",
+            "nome": "segmento_idiomas",
             "input": {
-                "searchQuery": f"{cidade_base} consultor de vendas consultor comercial executivo de vendas representante comercial sales consultant",
+                "searchQuery": query_segmento,
                 "profileScraperMode": "Full",
-                "maxItems": MAX_ITEMS_TESTE
+                "maxItems": MAX_ITEMS_APIFY
             }
         })
 
-    # Busca 3: extras, sem locations
-    extras = []
+    # Busca 4: expansão comercial, só para vagas de vendas/comercial.
+    if cargo_eh_comercial(cargo):
+        termos_comerciais = (
+            "consultor de vendas consultora de vendas "
+            "consultor comercial consultora comercial "
+            "executivo de vendas executiva de vendas "
+            "representante comercial sales consultant account executive "
+            "consultor de negócios vendas consultivas"
+        )
 
-    if habilidades:
-        extras.append(habilidades)
-
-    if idioma:
-        extras.append(idioma)
-
-    if empresa:
-        extras.append(empresa)
-
-    if extras:
         buscas.append({
-            "nome": "extras_texto_livre",
+            "nome": "empresa_segmento",
             "input": {
-                "searchQuery": f"{cargo_base} {cidade_base} {' '.join(extras)}",
+                "searchQuery": f"{cidade_corrigida} {termos_comerciais} {segmento} {empresa_anterior} {idioma} {palavras_chave}",
                 "profileScraperMode": "Full",
-                "maxItems": MAX_ITEMS_TESTE
+                "maxItems": MAX_ITEMS_APIFY
             }
         })
 
-    return buscas
+    # Se a empresa anterior vier como URL do LinkedIn, usamos pastCompanies.
+    # Se vier só "Wizard", usamos como palavra-chave e ranking, para não fechar demais.
+    if empresa_anterior and "linkedin.com/company" in empresa_anterior.lower():
+        buscas.append({
+            "nome": "empresa_linkedin_nativa",
+            "input": {
+                "searchQuery": cargo,
+                "locations": localizacoes,
+                "pastCompanies": [empresa_anterior.strip()],
+                "profileScraperMode": "Full",
+                "maxItems": MAX_ITEMS_APIFY
+            }
+        })
+
+    return buscas[:MAX_BUSCAS_APIFY]
 
 
 def iniciar_run_apify(apify_input):
@@ -435,7 +698,7 @@ def aguardar_run_apify(run_id):
 
     status_final = None
 
-    for tentativa in range(24):
+    for tentativa in range(30):
         time.sleep(5)
 
         resp = requests.get(
@@ -505,6 +768,10 @@ def rodar_busca_apify(apify_input):
     return buscar_resultados_apify(dataset_id)
 
 
+# =========================
+# ROTAS FLASK
+# =========================
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -517,9 +784,20 @@ def buscar():
 
         cargo = data.get("cargo", "").strip()
         cidade = data.get("cidade", "").strip()
+
+        segmento = data.get("segmento", "").strip()
+        empresa_anterior = (
+            data.get("empresa_anterior", "")
+            or data.get("empresa", "")
+        ).strip()
+
         idioma = data.get("idioma", "").strip()
-        habilidades = data.get("habilidades", "").strip()
-        empresa = data.get("empresa", "").strip()
+
+        palavras_chave = (
+            data.get("palavras_chave", "")
+            or data.get("habilidades", "")
+        ).strip()
+
         enviar_email = data.get("enviar_email", False)
 
         if not cargo or not cidade:
@@ -534,7 +812,16 @@ def buscar():
                 "mensagem": "APIFY_KEY não encontrada no Render."
             }), 500
 
-        buscas = montar_inputs_busca(cargo, cidade, idioma, habilidades, empresa)
+        cidade = corrigir_cidade(cidade)
+
+        buscas = montar_inputs_busca(
+            cargo=cargo,
+            cidade=cidade,
+            segmento=segmento,
+            empresa_anterior=empresa_anterior,
+            idioma=idioma,
+            palavras_chave=palavras_chave
+        )
 
         perfis_por_chave = {}
 
@@ -552,11 +839,7 @@ def buscar():
                 if not isinstance(perfil, dict):
                     continue
 
-                chave = (
-                    pegar_link(perfil)
-                    or pegar_nome(perfil)
-                )
-
+                chave = pegar_link(perfil) or pegar_nome(perfil)
                 chave_n = normalizar(chave)
 
                 if not chave_n:
@@ -567,6 +850,7 @@ def buscar():
                     perfis_por_chave[chave_n] = perfil
                 else:
                     perfis_por_chave[chave_n].setdefault("_origens_busca", [])
+
                     if origem not in perfis_por_chave[chave_n]["_origens_busca"]:
                         perfis_por_chave[chave_n]["_origens_busca"].append(origem)
 
@@ -577,45 +861,42 @@ def buscar():
         for perfil in todos_perfis:
             origens = perfil.get("_origens_busca", [])
 
-            if "exata" in origens:
-                origem_principal = "exata"
-            elif "extras" in origens:
-                origem_principal = "extras"
+            if "cargo_cidade_nativo" in origens:
+                origem_principal = "cargo_cidade_nativo"
+            elif "segmento_idiomas" in origens:
+                origem_principal = "segmento_idiomas"
+            elif "empresa_segmento" in origens:
+                origem_principal = "empresa_segmento"
             else:
-                origem_principal = "ampla"
+                origem_principal = "texto_livre"
 
             score, motivos = score_candidato(
-                perfil,
-                cargo,
-                cidade,
-                idioma,
-                habilidades,
-                empresa,
-                origem_principal
+                perfil=perfil,
+                cargo=cargo,
+                cidade=cidade,
+                segmento=segmento,
+                empresa_anterior=empresa_anterior,
+                idioma=idioma,
+                palavras_chave=palavras_chave,
+                origem_busca=origem_principal
             )
 
             if score is None:
                 continue
 
-            # bônus se apareceu em mais de uma busca
             if len(origens) >= 2:
-                score += 15
+                score += 18
                 motivos.append("apareceu em busca cruzada")
 
-            if "extras" in origens:
-                score += 10
-                motivos.append("apareceu na busca com extras")
+            if len(origens) >= 3:
+                score += 12
+                motivos.append("apareceu em múltiplas buscas")
 
             nome = pegar_nome(perfil)
             cargo_atual = pegar_cargo_atual(perfil)
             cidade_display = pegar_localizacao_texto(perfil)
             link = pegar_link(perfil)
-
-            resumo = (
-                perfil.get("about", "")
-                or perfil.get("summary", "")
-                or perfil.get("description", "")
-            )
+            resumo = pegar_resumo(perfil)
 
             candidatos_com_score.append({
                 "nome": nome,
@@ -625,7 +906,7 @@ def buscar():
                 "open_to_work": perfil.get("openToWork", False),
                 "score": score,
                 "motivos": motivos,
-                "resumo": resumo[:200] if resumo else ""
+                "resumo": resumo[:240] if resumo else ""
             })
 
         candidatos_com_score.sort(key=lambda x: x["score"], reverse=True)
@@ -633,14 +914,28 @@ def buscar():
         print("========== RESULTADO FINAL ==========")
         print("CARGO:", cargo)
         print("CIDADE:", cidade)
+        print("SEGMENTO:", segmento)
+        print("EMPRESA ANTERIOR:", empresa_anterior)
+        print("IDIOMA:", idioma)
+        print("PALAVRAS:", palavras_chave)
         print("TOTAL ÚNICO RAW:", len(todos_perfis))
         print("APROVADOS FILTRO:", len(candidatos_com_score))
-        for c in candidatos_com_score[:10]:
+
+        for c in candidatos_com_score[:15]:
             print(c["nome"], c["score"], c["motivos"], c["cargo_atual"], c["cidade"])
+
         print("========== FIM RESULTADO FINAL ==========")
 
         if enviar_email and candidatos_com_score:
-            enviar_email_resultado(candidatos_com_score, cargo, cidade)
+            enviar_email_resultado(
+                candidatos_com_score,
+                cargo,
+                cidade,
+                segmento,
+                empresa_anterior,
+                idioma,
+                palavras_chave
+            )
 
         return jsonify({
             "ok": True,
@@ -651,13 +946,26 @@ def buscar():
 
     except Exception as e:
         print("ERRO GERAL:", str(e))
+
         return jsonify({
             "ok": False,
             "mensagem": str(e)
         }), 500
 
 
-def enviar_email_resultado(candidatos_com_score, cargo, cidade):
+# =========================
+# EMAIL
+# =========================
+
+def enviar_email_resultado(
+    candidatos_com_score,
+    cargo,
+    cidade,
+    segmento,
+    empresa_anterior,
+    idioma,
+    palavras_chave
+):
     if not SENDGRID_KEY:
         print("SENDGRID_KEY não configurada. E-mail não enviado.")
         return
@@ -673,39 +981,73 @@ def enviar_email_resultado(candidatos_com_score, cargo, cidade):
         cargo_atual = escape(c["cargo_atual"] or "—")
         cidade_txt = escape(c["cidade"] or "—")
         link = escape(c["link"] or "#")
+        resumo = escape(c["resumo"] or "")
 
         badge_otw = ""
+
         if c["open_to_work"]:
-            badge_otw = '<span style="background:#22c55e;color:white;padding:2px 8px;border-radius:20px;font-size:11px;margin-left:6px;">Open to Work</span>'
+            badge_otw = (
+                '<span style="background:#22c55e;color:white;padding:2px 8px;'
+                'border-radius:20px;font-size:11px;margin-left:6px;">Open to Work</span>'
+            )
 
         tags = "".join([
-            f'<span style="background:#e8eef5;color:#1a3a5c;padding:2px 8px;border-radius:20px;font-size:11px;margin:2px;">{escape(m)}</span>'
+            f'<span style="background:#e8eef5;color:#1a3a5c;padding:2px 8px;'
+            f'border-radius:20px;font-size:11px;margin:2px;display:inline-block;">{escape(m)}</span>'
             for m in c["motivos"]
         ])
+
+        resumo_html = ""
+
+        if resumo:
+            resumo_html = f'<div style="color:#777;font-size:12px;margin-top:6px;line-height:1.4;">{resumo}</div>'
 
         linhas += f"""
         <tr>
             <td style="padding:12px;border-bottom:1px solid #eee;color:#999;font-weight:700;">{i}</td>
+
             <td style="padding:12px;border-bottom:1px solid #eee;">
                 <strong style="font-size:15px;">{nome}</strong>{badge_otw}<br>
                 <span style="color:#555;font-size:13px;">{cargo_atual}</span><br>
                 <span style="color:#888;font-size:12px;">📍 {cidade_txt}</span><br>
-                <div style="margin-top:4px;">{tags}</div>
+                <div style="margin-top:5px;">{tags}</div>
+                {resumo_html}
             </td>
+
             <td style="padding:12px;border-bottom:1px solid #eee;text-align:right;">
-                <span style="background:#1a3a5c;color:white;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">{c['score']} pts</span><br><br>
+                <span style="background:#1a3a5c;color:white;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">
+                    {c['score']} pts
+                </span><br><br>
                 <a href="{link}" style="color:#1a3a5c;font-weight:bold;font-size:13px;">Ver perfil →</a>
             </td>
         </tr>
         """
 
+    filtros_html = f"""
+    <p style="color:#a8c4e0;margin:12px 0 0;">
+        Busca: <strong>{escape(cargo)} | {escape(cidade)}</strong>
+    </p>
+    <p style="color:#a8c4e0;margin:4px 0 0;font-size:12px;">
+        Segmento: {escape(segmento or "—")}<br>
+        Empresa anterior desejada: {escape(empresa_anterior or "—")}<br>
+        Idioma: {escape(idioma or "—")}<br>
+        Palavras-chave: {escape(palavras_chave or "—")}
+    </p>
+    """
+
     corpo = f"""
-    <div style="font-family:Arial,sans-serif;max-width:750px;margin:auto;">
+    <div style="font-family:Arial,sans-serif;max-width:820px;margin:auto;">
       <div style="background:#1a3a5c;padding:24px;border-radius:12px 12px 0 0;">
         <h2 style="color:white;margin:0;font-family:Arial;letter-spacing:2px;">VIRTUS EXEC</h2>
-        <p style="color:#a8c4e0;margin:4px 0 0;font-size:12px;letter-spacing:1px;">BUSCA INTELIGENTE DE CANDIDATOS</p>
-        <p style="color:#a8c4e0;margin:12px 0 0;">Busca: <strong>{escape(cargo)} | {escape(cidade)}</strong></p>
-        <p style="color:#a8c4e0;margin:2px 0 0;font-size:11px;">{datetime.now().strftime("%d/%m/%Y %H:%M")} • {len(candidatos_com_score)} candidatos ranqueados</p>
+        <p style="color:#a8c4e0;margin:4px 0 0;font-size:12px;letter-spacing:1px;">
+            BUSCA INTELIGENTE DE CANDIDATOS
+        </p>
+
+        {filtros_html}
+
+        <p style="color:#a8c4e0;margin:12px 0 0;font-size:11px;">
+            {datetime.now().strftime("%d/%m/%Y %H:%M")} • {len(candidatos_com_score)} candidatos ranqueados
+        </p>
       </div>
 
       <table style="width:100%;border-collapse:collapse;background:white;">
@@ -714,11 +1056,14 @@ def enviar_email_resultado(candidatos_com_score, cargo, cidade):
           <th style="padding:10px;text-align:left;">Candidato</th>
           <th style="padding:10px;text-align:right;width:100px;">Score</th>
         </tr>
+
         {linhas}
       </table>
 
       <div style="background:#f5f7fa;padding:15px;border-radius:0 0 12px 12px;text-align:center;">
-        <small style="color:#999;">Ranqueado por busca cruzada: cidade + cargo + extras • {datetime.now().strftime("%d/%m/%Y %H:%M")}</small>
+        <small style="color:#999;">
+            Ranqueado por: cargo + cidade + segmento + empresa anterior + idioma + palavras-chave.
+        </small>
       </div>
     </div>
     """
@@ -733,7 +1078,10 @@ def enviar_email_resultado(candidatos_com_score, cargo, cidade):
             json={
                 "personalizations": [{"to": [{"email": DESTINATARIO}]}],
                 "from": {"email": REMETENTE},
-                "subject": f"[Virtus Exec] {cargo} | {cidade} — {len(candidatos_com_score)} candidatos • {datetime.now().strftime('%d/%m/%Y')}",
+                "subject": (
+                    f"[Virtus Exec] {cargo} | {cidade} — "
+                    f"{len(candidatos_com_score)} candidatos • {datetime.now().strftime('%d/%m/%Y')}"
+                ),
                 "content": [{"type": "text/html", "value": corpo}]
             },
             timeout=20
