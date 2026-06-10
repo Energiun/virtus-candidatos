@@ -16,51 +16,8 @@ APIFY_KEY = os.environ.get("APIFY_KEY")
 
 APIFY_ACTOR = "harvestapi~linkedin-profile-search"
 
-# teste econômico
+# Teste econômico. Depois que funcionar, pode subir para 25.
 MAX_ITEMS_TESTE = 10
-
-# Por enquanto vamos ser rígidos:
-# primeiro buscar SOMENTE a cidade digitada.
-# Depois que estiver bom, abrimos região de novo.
-BUSCAR_SOMENTE_CIDADE = True
-
-
-REGIOES = {
-    "campinas": [
-        "Campinas", "Valinhos", "Vinhedo", "Indaiatuba",
-        "Paulínia", "Sumaré", "Hortolândia", "Americana", "Jundiaí"
-    ],
-    "valinhos": [
-        "Valinhos", "Campinas", "Vinhedo", "Indaiatuba", "Paulínia"
-    ],
-    "paulinia": [
-        "Paulínia", "Campinas", "Americana", "Sumaré", "Hortolândia"
-    ],
-    "paulínia": [
-        "Paulínia", "Campinas", "Americana", "Sumaré", "Hortolândia"
-    ],
-    "jundiai": [
-        "Jundiaí", "Itupeva", "Várzea Paulista", "Campo Limpo Paulista"
-    ],
-    "jundiaí": [
-        "Jundiaí", "Itupeva", "Várzea Paulista", "Campo Limpo Paulista"
-    ],
-    "sorocaba": [
-        "Sorocaba", "Votorantim", "Itu", "Boituva"
-    ],
-    "ribeirao preto": [
-        "Ribeirão Preto", "Sertãozinho", "Jaboticabal"
-    ],
-    "ribeirão preto": [
-        "Ribeirão Preto", "Sertãozinho", "Jaboticabal"
-    ],
-    "sao paulo": [
-        "São Paulo"
-    ],
-    "são paulo": [
-        "São Paulo"
-    ],
-}
 
 
 def normalizar(texto):
@@ -72,11 +29,53 @@ def normalizar(texto):
     return texto
 
 
+def formatar_localizacao_linkedin(cidade):
+    cidade = cidade.strip()
+
+    if "," in cidade:
+        return cidade
+
+    return f"{cidade}, São Paulo, Brazil"
+
+
 def palavras(texto):
     texto = normalizar(texto)
+
     for ch in ["/", "-", "|", ",", ".", "(", ")", "[", "]", ";", ":"]:
         texto = texto.replace(ch, " ")
-    return [p for p in texto.split() if len(p) >= 3]
+
+    stop = {
+        "de", "da", "do", "das", "dos", "para", "com",
+        "uma", "por", "the", "and", "jr", "pl", "sr", "em"
+    }
+
+    return [p for p in texto.split() if len(p) >= 3 and p not in stop]
+
+
+def pegar_nome(perfil):
+    first = perfil.get("firstName", "") or perfil.get("first_name", "")
+    last = perfil.get("lastName", "") or perfil.get("last_name", "")
+
+    nome = f"{first} {last}".strip()
+
+    if nome:
+        return nome
+
+    return (
+        perfil.get("fullName", "")
+        or perfil.get("name", "")
+        or "Nome não informado"
+    )
+
+
+def pegar_link(perfil):
+    return (
+        perfil.get("linkedinUrl", "")
+        or perfil.get("url", "")
+        or perfil.get("profileUrl", "")
+        or perfil.get("linkedin", "")
+        or perfil.get("publicIdentifier", "")
+    )
 
 
 def pegar_localizacao_texto(perfil):
@@ -89,6 +88,7 @@ def pegar_localizacao_texto(perfil):
 
     if isinstance(location, dict):
         parsed = location.get("parsed", {})
+
         if isinstance(parsed, dict):
             partes.append(parsed.get("city", ""))
             partes.append(parsed.get("state", ""))
@@ -104,7 +104,7 @@ def pegar_localizacao_texto(perfil):
 
     for chave in [
         "locationName", "geoLocationName", "city",
-        "address", "locationText", "location"
+        "address", "locationText"
     ]:
         valor = perfil.get(chave)
         if isinstance(valor, str):
@@ -138,7 +138,7 @@ def pegar_cargo_atual(perfil):
 
     for chave in [
         "headline", "occupation", "title", "position",
-        "jobTitle", "subTitle", "description"
+        "jobTitle", "subTitle"
     ]:
         valor = perfil.get(chave)
         if valor:
@@ -151,6 +151,7 @@ def pegar_historico_texto(perfil):
     textos = []
 
     experience = perfil.get("experience", [])
+
     if isinstance(experience, list):
         for exp in experience:
             if isinstance(exp, dict):
@@ -160,7 +161,7 @@ def pegar_historico_texto(perfil):
                 textos.append(str(exp.get("company", "")))
                 textos.append(str(exp.get("description", "")))
 
-    for chave in ["about", "summary", "headline"]:
+    for chave in ["about", "summary", "headline", "description"]:
         valor = perfil.get(chave)
         if valor:
             textos.append(str(valor))
@@ -168,134 +169,119 @@ def pegar_historico_texto(perfil):
     return " ".join(textos)
 
 
-def pegar_nome(perfil):
-    first = perfil.get("firstName", "") or perfil.get("first_name", "")
-    last = perfil.get("lastName", "") or perfil.get("last_name", "")
-    nome = f"{first} {last}".strip()
-
-    if nome:
-        return nome
-
-    return (
-        perfil.get("fullName", "")
-        or perfil.get("name", "")
-        or "Nome não informado"
-    )
-
-
-def pegar_link(perfil):
-    return (
-        perfil.get("linkedinUrl", "")
-        or perfil.get("url", "")
-        or perfil.get("profileUrl", "")
-        or perfil.get("linkedin", "")
-    )
-
-
-def cidade_bate(perfil, cidade):
+def cidade_exata_bate(perfil, cidade):
     localizacao = normalizar(pegar_localizacao_texto(perfil))
     cidade_n = normalizar(cidade)
 
     if not localizacao:
-        return False, ""
+        return False
 
-    if cidade_n in localizacao:
-        return True, "cidade exata"
-
-    return False, ""
+    return cidade_n in localizacao
 
 
 def cargo_bate(cargo_busca, cargo_atual, historico):
     cargo_n = normalizar(cargo_busca)
     atual_n = normalizar(cargo_atual)
     hist_n = normalizar(historico)
-
-    # A prioridade agora é cargo atual/headline.
-    # Histórico só entra como apoio, não como aprovação fraca.
-    texto_forte = atual_n
     texto_total = f"{atual_n} {hist_n}"
+
+    # Cargo exato no cargo atual/headline
+    if cargo_n and cargo_n in atual_n:
+        return True, 50, "cargo atual exato"
+
+    # Cargo exato no histórico
+    if cargo_n and cargo_n in hist_n:
+        return True, 25, "cargo no histórico"
 
     cargo_palavras = palavras(cargo_busca)
 
-    stop = {
-        "de", "da", "do", "das", "dos", "para", "com",
-        "uma", "por", "the", "and", "jr", "pl", "sr"
-    }
-
-    cargo_palavras = [p for p in cargo_palavras if p not in stop]
-
-    # Match direto do cargo completo no cargo atual
-    if cargo_n and cargo_n in texto_forte:
-        return True, 45, "cargo atual exato"
-
-    # Regra especial para vagas de vendas/comercial
+    # Regra especial para vendas/comercial
     busca_vendas = any(t in cargo_n for t in [
         "venda", "vendas", "comercial", "consultor",
-        "executivo", "representante", "key account", "account"
+        "executivo", "representante", "account"
     ])
 
     if busca_vendas:
-        tem_vendas_atual = any(t in texto_forte for t in [
-            "venda", "vendas", "sales", "comercial", "account"
-        ])
+        termos_vendas = [
+            "venda", "vendas", "sales", "comercial"
+        ]
 
-        tem_consultor_atual = any(t in texto_forte for t in [
+        termos_funcao = [
             "consultor", "consultora", "executivo", "executiva",
-            "representante", "key account", "account executive"
-        ])
+            "representante", "key account", "account executive",
+            "consultant"
+        ]
 
-        # Para "Consultor de vendas", exige os dois grupos no cargo atual/headline.
+        tem_vendas_atual = any(t in atual_n for t in termos_vendas)
+        tem_funcao_atual = any(t in atual_n for t in termos_funcao)
+
+        tem_vendas_total = any(t in texto_total for t in termos_vendas)
+        tem_funcao_total = any(t in texto_total for t in termos_funcao)
+
+        # Para "Consultor de vendas", exige função + vendas.
         if "consultor" in cargo_n and "venda" in cargo_n:
-            if tem_consultor_atual and tem_vendas_atual:
-                return True, 40, "cargo atual compatível"
+            if tem_funcao_atual and tem_vendas_atual:
+                return True, 45, "cargo atual compatível"
+
+            if tem_funcao_total and tem_vendas_total:
+                return True, 20, "histórico compatível"
 
             return False, 0, ""
 
-        # Para outras vagas comerciais, aceita combinação forte
-        if tem_vendas_atual and tem_consultor_atual:
-            return True, 35, "cargo atual comercial"
+        # Para outros cargos comerciais
+        if tem_funcao_atual and tem_vendas_atual:
+            return True, 40, "cargo atual comercial"
 
-        # Aceita cargo atual com vendas explícito, mas com score menor
         if tem_vendas_atual:
-            return True, 25, "cargo atual em vendas"
+            return True, 30, "cargo atual em vendas"
+
+        if tem_funcao_total and tem_vendas_total:
+            return True, 18, "histórico comercial"
 
         return False, 0, ""
 
-    # Para outros cargos: precisa bater pelo menos 70% das palavras principais no cargo atual
+    # Regra geral para outras vagas
     if cargo_palavras:
-        acertos_atual = sum(1 for p in cargo_palavras if p in texto_forte)
-        proporcao = acertos_atual / len(cargo_palavras)
+        acertos_atual = sum(1 for p in cargo_palavras if p in atual_n)
+        acertos_total = sum(1 for p in cargo_palavras if p in texto_total)
 
-        if proporcao >= 0.7:
-            return True, 40, "cargo atual compatível"
+        if acertos_atual / len(cargo_palavras) >= 0.7:
+            return True, 45, "cargo atual compatível"
 
-    # Histórico só vale se o cargo completo aparecer claramente
-    if cargo_n and cargo_n in hist_n:
-        return True, 18, "cargo no histórico"
+        if acertos_total / len(cargo_palavras) >= 0.7:
+            return True, 20, "histórico compatível"
 
     return False, 0, ""
 
 
-def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa):
+def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa, origem_busca):
     score = 0
     motivos = []
 
-    ok_cidade, motivo_cidade = cidade_bate(perfil, cidade)
-    if not ok_cidade:
+    if not cidade_exata_bate(perfil, cidade):
         return None, []
 
-    score += 45
-    motivos.append(motivo_cidade)
+    score += 50
+    motivos.append("cidade exata")
 
     cargo_atual = pegar_cargo_atual(perfil)
     historico = pegar_historico_texto(perfil)
 
     ok_cargo, pontos_cargo, motivo_cargo = cargo_bate(cargo, cargo_atual, historico)
+
     if not ok_cargo:
         return None, []
 
     score += pontos_cargo
     motivos.append(motivo_cargo)
+
+    if origem_busca == "exata":
+        score += 20
+        motivos.append("busca exata")
+
+    if origem_busca == "ampla":
+        score += 5
+        motivos.append("busca ampla")
 
     if perfil.get("openToWork"):
         score += 10
@@ -305,6 +291,7 @@ def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa):
 
     if idioma:
         idioma_n = normalizar(idioma)
+
         if "ingles" in idioma_n:
             if "ingles" in texto_total or "english" in texto_total:
                 score += 8
@@ -320,12 +307,14 @@ def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa):
                 continue
 
             hab_n = normalizar(hab)
+
             if hab_n in texto_total:
                 score += 8
                 motivos.append(f"skill: {hab}")
 
     if empresa:
         empresa_n = normalizar(empresa)
+
         if empresa_n in texto_total:
             score += 20
             motivos.append(f"empresa: {empresa}")
@@ -333,19 +322,58 @@ def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa):
     return score, motivos
 
 
-def montar_apify_input(cargo, cidade):
-    if BUSCAR_SOMENTE_CIDADE:
-        locations = [cidade]
-    else:
-        cidade_lower = normalizar(cidade)
-        locations = REGIOES.get(cidade_lower, [cidade])
+def montar_inputs_busca(cargo, cidade, idioma="", habilidades="", empresa=""):
+    localizacao = formatar_localizacao_linkedin(cidade)
 
-    return {
-        "search": cargo,
-        "locations": locations,
-        "profileScraperMode": "Full",
-        "maxItems": MAX_ITEMS_TESTE
-    }
+    buscas = []
+
+    # 1. Busca exata: cargo no título atual + cidade
+    buscas.append({
+        "nome": "exata",
+        "input": {
+            "searchQuery": cargo,
+            "locations": [localizacao],
+            "currentJobTitles": [cargo],
+            "profileScraperMode": "Full",
+            "maxItems": MAX_ITEMS_TESTE
+        }
+    })
+
+    # 2. Busca ampla: cargo + cidade
+    buscas.append({
+        "nome": "ampla",
+        "input": {
+            "searchQuery": cargo,
+            "locations": [localizacao],
+            "profileScraperMode": "Full",
+            "maxItems": MAX_ITEMS_TESTE
+        }
+    })
+
+    # 3. Busca com extras: só roda se tiver extra preenchido
+    extras = []
+
+    if habilidades:
+        extras.append(habilidades)
+
+    if idioma:
+        extras.append(idioma)
+
+    if empresa:
+        extras.append(empresa)
+
+    if extras:
+        buscas.append({
+            "nome": "extras",
+            "input": {
+                "searchQuery": f"{cargo} {' '.join(extras)}",
+                "locations": [localizacao],
+                "profileScraperMode": "Full",
+                "maxItems": MAX_ITEMS_TESTE
+            }
+        })
+
+    return buscas
 
 
 def iniciar_run_apify(apify_input):
@@ -378,6 +406,7 @@ def iniciar_run_apify(apify_input):
         raise Exception(f"Erro Apify HTTP {resp.status_code}: {data}")
 
     run_id = data.get("data", {}).get("id")
+
     if not run_id:
         raise Exception(f"Apify não retornou run_id: {data}")
 
@@ -431,7 +460,6 @@ def buscar_resultados_apify(dataset_id):
 
     print("========== APIFY RESULTADOS ==========")
     print("STATUS CODE:", resp.status_code)
-    print("TIPO:", type(data))
     print("TOTAL RAW:", len(data) if isinstance(data, list) else "não é lista")
 
     if isinstance(data, list) and len(data) > 0:
@@ -446,6 +474,18 @@ def buscar_resultados_apify(dataset_id):
         return []
 
     return data
+
+
+def rodar_busca_apify(apify_input):
+    run_id = iniciar_run_apify(apify_input)
+    run_data = aguardar_run_apify(run_id)
+
+    dataset_id = run_data.get("defaultDatasetId")
+
+    if not dataset_id:
+        raise Exception("Apify terminou, mas não retornou dataset.")
+
+    return buscar_resultados_apify(dataset_id)
 
 
 @app.route("/")
@@ -477,25 +517,55 @@ def buscar():
                 "mensagem": "APIFY_KEY não encontrada no Render."
             }), 500
 
-        apify_input = montar_apify_input(cargo, cidade)
+        buscas = montar_inputs_busca(cargo, cidade, idioma, habilidades, empresa)
 
-        run_id = iniciar_run_apify(apify_input)
-        run_data = aguardar_run_apify(run_id)
+        perfis_por_chave = {}
 
-        dataset_id = run_data.get("defaultDatasetId")
-        if not dataset_id:
-            return jsonify({
-                "ok": False,
-                "mensagem": "Apify terminou, mas não retornou dataset."
-            }), 500
+        for busca_config in buscas:
+            origem = busca_config["nome"]
+            apify_input = busca_config["input"]
 
-        perfis = buscar_resultados_apify(dataset_id)
+            print("========== RODANDO BUSCA ==========")
+            print("ORIGEM:", origem)
+            print("INPUT:", apify_input)
+
+            perfis = rodar_busca_apify(apify_input)
+
+            for perfil in perfis:
+                if not isinstance(perfil, dict):
+                    continue
+
+                chave = (
+                    pegar_link(perfil)
+                    or pegar_nome(perfil)
+                )
+
+                chave_n = normalizar(chave)
+
+                if not chave_n:
+                    continue
+
+                if chave_n not in perfis_por_chave:
+                    perfil["_origens_busca"] = [origem]
+                    perfis_por_chave[chave_n] = perfil
+                else:
+                    perfis_por_chave[chave_n].setdefault("_origens_busca", [])
+                    if origem not in perfis_por_chave[chave_n]["_origens_busca"]:
+                        perfis_por_chave[chave_n]["_origens_busca"].append(origem)
+
+        todos_perfis = list(perfis_por_chave.values())
 
         candidatos_com_score = []
 
-        for perfil in perfis:
-            if not isinstance(perfil, dict):
-                continue
+        for perfil in todos_perfis:
+            origens = perfil.get("_origens_busca", [])
+
+            if "exata" in origens:
+                origem_principal = "exata"
+            elif "extras" in origens:
+                origem_principal = "extras"
+            else:
+                origem_principal = "ampla"
 
             score, motivos = score_candidato(
                 perfil,
@@ -503,11 +573,21 @@ def buscar():
                 cidade,
                 idioma,
                 habilidades,
-                empresa
+                empresa,
+                origem_principal
             )
 
             if score is None:
                 continue
+
+            # bônus se apareceu em mais de uma busca
+            if len(origens) >= 2:
+                score += 15
+                motivos.append("apareceu em busca cruzada")
+
+            if "extras" in origens:
+                score += 10
+                motivos.append("apareceu na busca com extras")
 
             nome = pegar_nome(perfil)
             cargo_atual = pegar_cargo_atual(perfil)
@@ -536,7 +616,7 @@ def buscar():
         print("========== RESULTADO FINAL ==========")
         print("CARGO:", cargo)
         print("CIDADE:", cidade)
-        print("RAW PERFIS:", len(perfis))
+        print("TOTAL ÚNICO RAW:", len(todos_perfis))
         print("APROVADOS FILTRO:", len(candidatos_com_score))
         for c in candidatos_com_score[:10]:
             print(c["nome"], c["score"], c["motivos"], c["cargo_atual"], c["cidade"])
@@ -621,7 +701,7 @@ def enviar_email_resultado(candidatos_com_score, cargo, cidade):
       </table>
 
       <div style="background:#f5f7fa;padding:15px;border-radius:0 0 12px 12px;text-align:center;">
-        <small style="color:#999;">Ranqueado por: cidade exata + cargo atual + extras • {datetime.now().strftime("%d/%m/%Y %H:%M")}</small>
+        <small style="color:#999;">Ranqueado por busca cruzada: cidade + cargo + extras • {datetime.now().strftime("%d/%m/%Y %H:%M")}</small>
       </div>
     </div>
     """
@@ -643,6 +723,7 @@ def enviar_email_resultado(candidatos_com_score, cargo, cidade):
         )
 
         print("SENDGRID STATUS:", resp.status_code)
+
         if resp.status_code >= 400:
             print("SENDGRID ERRO:", resp.text)
 
