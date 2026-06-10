@@ -59,7 +59,7 @@ def limpar_duplicados(lista):
 
     return resultado
 
-def limitar_search_query(texto, limite=280):
+def limitar_search_query(texto, limite=240):
     texto = " ".join(str(texto or "").split()).strip()
 
     if len(texto) <= limite:
@@ -76,8 +76,19 @@ def limitar_search_query(texto, limite=280):
 
         resultado = tentativa
 
+    if not resultado:
+        resultado = texto[:limite]
+
     return resultado.strip()
 
+def sanitizar_input_apify(apify_input):
+    novo_input = dict(apify_input)
+
+    if "searchQuery" in novo_input:
+        novo_input["searchQuery"] = limitar_search_query(novo_input.get("searchQuery", ""), 240)
+
+    return novo_input
+    
 def separar_termos(texto):
     if not texto:
         return []
