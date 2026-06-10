@@ -8,178 +8,262 @@ app = Flask(__name__)
 DESTINATARIO = "ti@virtusexec.com.br"
 REMETENTE = os.environ.get("EMAIL_REMETENTE")
 SENDGRID_KEY = os.environ.get("SENDGRID_KEY")
-SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
+APIFY_KEY = os.environ.get("APIFY_KEY")
 
 REGIOES = {
-    "campinas": "Campinas OR Valinhos OR Vinhedo OR Indaiatuba OR Paulínia OR Sumaré OR Hortolândia OR Americana OR Jundiaí",
-    "valinhos": "Campinas OR Valinhos OR Vinhedo OR Indaiatuba OR Paulínia",
-    "jundiaí": "Jundiaí OR Itupeva OR Várzea Paulista OR Campo Limpo Paulista",
-    "sorocaba": "Sorocaba OR Votorantim OR Itu OR Boituva",
-    "ribeirão preto": "Ribeirão Preto OR Sertãozinho OR Jaboticabal",
+    "campinas":      ["Campinas", "Valinhos", "Vinhedo", "Indaiatuba", "Paulínia", "Sumaré", "Hortolândia", "Americana", "Jundiaí"],
+    "valinhos":      ["Valinhos", "Campinas", "Vinhedo", "Indaiatuba", "Paulínia"],
+    "paulínia":      ["Paulínia", "Campinas", "Americana", "Sumaré", "Hortolândia"],
+    "paulinia":      ["Paulínia", "Campinas", "Americana", "Sumaré", "Hortolândia"],
+    "jundiaí":       ["Jundiaí", "Itupeva", "Várzea Paulista", "Campo Limpo Paulista"],
+    "sorocaba":      ["Sorocaba", "Votorantim", "Itu", "Boituva"],
+    "ribeirão preto":["Ribeirão Preto", "Sertãozinho", "Jaboticabal"],
+    "são paulo":     ["São Paulo"],
 }
 
-def busca_serpapi(query, start=0):
-    try:
-        resp = requests.get("https://serpapi.com/search", params={
-            "q": query,
-            "api_key": SERPAPI_KEY,
-            "num": 10,
-            "start": start,
-            "hl": "pt",
-            "gl": "br"
-        }, timeout=25)
-        return resp.json().get("organic_results", [])
-    except:
-        return []
+def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa, regiao_cidades):
+    score = 0
+    motivos = []
 
-def extras_para_query(idioma, habilidades, empresa):
-    partes = []
+    # Cidade (peso máximo)
+    city = ""
+    try:
+        city = perfil.get("location", {}).get("parsed", {}).get("city", "").lower()
+    except:
+        pass
+
+    cidade_lower = cidade.lower()
+    if city == cidade_lower:
+        score += 30
+        motivos.append("cidade exata")
+    elif city in [c.lower() for c in regiao_cidades]:
+        score += 15
+        motivos.append("cidade da região")
+    else:
+        return None, []  # Fora da região = descarta
+
+    # Cargo atual
+    cargo_lower = cargo.lower()
+    cargo_atual = ""
+    try:
+        cargo_atual = perfil.get("currentPosition", [{}])[0].get("position", "").lower()
+    except:
+        pass
+
+    if cargo_lower in cargo_atual:
+        score += 25
+        motivos.append("cargo atual exato")
+    else:
+        # Verifica histórico
+        achou_cargo = False
+        for exp in perfil.get("experience", []):
+            pos = exp.get("position", "").lower()
+            if cargo_lower in pos:
+                score += 10
+                motivos.append("cargo no histórico")
+                achou_cargo = True
+                break
+        if not achou_cargo:
+            score -= 5
+
+    # Open to work
+    if perfil.get("openToWork"):
+        score += 10
+        motivos.append("open to work")
+
+    # Idioma
     if idioma:
-        i = idioma.lower().strip()
-        if i in ["inglês", "ingles", "english"]:
-            partes.append('("inglês" OR "english" OR "inglês avançado" OR "inglês fluente")')
-        elif i in ["espanhol", "spanish"]:
-            partes.append('("espanhol" OR "spanish" OR "espanhol avançado")')
-        else:
-            partes.append(f'"{idioma}"')
+        idioma_lower = idioma.lower()
+        for lang in perfil.get("languages", []):
+            nome = lang.get("name", "").lower()
+            nivel = lang.get("proficiency", "").lower()
+            if idioma_lower in nome or ("inglês" in idioma_lower and "english" in nome):
+                if any(x in nivel for x in ["advanced", "fluent", "avançado", "fluente", "native", "bilingual", "professional"]):
+                    score += 15
+                    motivos.append("idioma avançado")
+                else:
+                    score += 5
+                    motivos.append("idioma básico")
+                break
+
+    # Habilidades
     if habilidades:
-        for h in habilidades.split(","):
-            h = h.strip()
-            if h:
-                partes.append(f'"{h}"')
+        skills_perfil = [s.get("name", "").lower() for s in perfil.get("skills", [])]
+        texto_exp = " ".join([
+            (e.get("description") or "") + " " + e.get("position", "")
+            for e in perfil.get("experience", [])
+        ]).lower()
+
+        for hab in habilidades.split(","):
+            hab = hab.strip().lower()
+            if hab and (hab in skills_perfil or hab in texto_exp):
+                score += 8
+                motivos.append(f"skill: {hab}")
+
+    # Empresa passada
     if empresa:
-        partes.append(f'"{empresa.strip()}"')
-    return " ".join(partes)
+        empresa_lower = empresa.strip().lower()
+        for exp in perfil.get("experience", []):
+            company = exp.get("companyName", "").lower()
+            if empresa_lower in company:
+                score += 20
+                motivos.append(f"trabalhou na {empresa}")
+                break
+
+    return score, motivos
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
 @app.route("/buscar", methods=["POST"])
 def buscar():
     data = request.json
-    cargo = data.get("cargo", "").strip()
-    cidade = data.get("cidade", "Campinas").strip()
-    idioma = data.get("idioma", "").strip()
+    cargo     = data.get("cargo", "").strip()
+    cidade    = data.get("cidade", "Campinas").strip()
+    idioma    = data.get("idioma", "").strip()
     habilidades = data.get("habilidades", "").strip()
-    empresa = data.get("empresa", "").strip()
+    empresa   = data.get("empresa", "").strip()
     enviar_email = data.get("enviar_email", False)
 
     if not cargo or not cidade:
         return jsonify({"ok": False, "mensagem": "Cargo e cidade são obrigatórios"}), 400
 
     cidade_lower = cidade.lower()
-    regiao = REGIOES.get(cidade_lower, cidade)
-    extras = extras_para_query(idioma, habilidades, empresa)
+    regiao_cidades = REGIOES.get(cidade_lower, [cidade])
 
-    # 6 queries cruzadas: cargo com/sem aspas x cidade exata/região/estado
-    loc_exata = f'"{cidade}, São Paulo, Brasil"'
-    loc_regiao = f'"{cidade} e Região"'
-    loc_estado = f'"São Paulo"'
-    regiao_or = f'({regiao})'
+    # Monta input para o Apify
+    apify_input = {
+        "search": cargo,
+        "locations": [cidade] + regiao_cidades[1:3],  # cidade + 2 vizinhas
+        "profileScraperMode": "Full ($0.1 per search page + $0.004 per full profile)",
+        "maxItems": 25
+    }
 
-    queries = [
-        # Cargo exato + cidade exata (maior precisão)
-        (f'site:linkedin.com/in "{cargo}" {loc_exata} {extras}', 3),
-        (f'site:linkedin.com/in "{cargo}" {loc_exata} {extras}', 2, 10),  # página 2
-        # Cargo exato + região
-        (f'site:linkedin.com/in "{cargo}" {loc_regiao} {extras}', 2),
-        # Cargo exato + cidades da região
-        (f'site:linkedin.com/in "{cargo}" {regiao_or} {extras}', 2),
-        # Cargo sem aspas + cidade exata
-        (f'site:linkedin.com/in {cargo} {loc_exata} {extras}', 1),
-        # Cargo sem aspas + região
-        (f'site:linkedin.com/in {cargo} {regiao_or} {extras}', 1),
-    ]
+    if empresa:
+        apify_input["pastCompanies"] = [empresa]
 
-    todos = {}
-    for q in queries:
-        query_str = q[0].strip()
-        score_base = q[1]
-        start = q[2] if len(q) > 2 else 0
-        resultados = busca_serpapi(query_str, start)
-        for r in resultados:
-            link = r.get("link", "")
-            if "linkedin.com/in/" not in link:
-                continue
-            titulo = r.get("title", "").lower()
-            snippet = r.get("snippet", "").lower()
-            cargo_lower = cargo.lower()
-            # Cargo DEVE aparecer no título ou snippet
-            if cargo_lower not in titulo and cargo_lower not in snippet:
-                continue
-            # Extras obrigatórios: verifica se aparecem no snippet/título
-            passou_extras = True
-            if idioma:
-                i = idioma.lower()
-                termos_idioma = [i, "avançado", "fluente", "advanced", "fluent"]
-                if not any(t in titulo + snippet for t in termos_idioma):
-                    passou_extras = False
-            if habilidades and passou_extras:
-                for h in habilidades.split(","):
-                    h = h.strip().lower()
-                    if h and h not in titulo + snippet:
-                        passou_extras = False
-                        break
-            if empresa and passou_extras:
-                if empresa.lower() not in titulo + snippet:
-                    passou_extras = False
+    # Chama o Apify
+    try:
+        run_resp = requests.post(
+            "https://api.apify.com/v2/acts/harvestapi~linkedin-profile-search/runs",
+            headers={
+                "Authorization": f"Bearer {APIFY_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={"input": apify_input},
+            timeout=10
+        )
+        run_data = run_resp.json()
+        run_id = run_data.get("data", {}).get("id")
+        if not run_id:
+            return jsonify({"ok": False, "mensagem": f"Erro ao iniciar busca no Apify: {run_data}"}), 500
+    except Exception as e:
+        return jsonify({"ok": False, "mensagem": f"Erro ao conectar ao Apify: {str(e)}"}), 500
 
-            if link not in todos:
-                todos[link] = {
-                    "nome": r.get("title", "").split(" - ")[0].strip(),
-                    "link": link,
-                    "resumo": r.get("snippet", ""),
-                    "score": 0,
-                    "extras_ok": passou_extras
-                }
-            todos[link]["score"] += score_base
-            if passou_extras:
-                todos[link]["extras_ok"] = True
+    # Aguarda conclusão (max 90s)
+    import time
+    for _ in range(18):
+        time.sleep(5)
+        status_resp = requests.get(
+            f"https://api.apify.com/v2/acts/harvestapi~linkedin-profile-search/runs/{run_id}",
+            headers={"Authorization": f"Bearer {APIFY_KEY}"}
+        )
+        status = status_resp.json().get("data", {}).get("status", "")
+        if status == "SUCCEEDED":
+            break
+        if status in ["FAILED", "ABORTED", "TIMED-OUT"]:
+            return jsonify({"ok": False, "mensagem": f"Busca falhou no Apify: {status}"}), 500
 
-    # Separa: quem passou nos extras primeiro, depois os demais
-    com_extras = [c for c in todos.values() if c["extras_ok"]]
-    sem_extras = [c for c in todos.values() if not c["extras_ok"]]
+    # Busca resultados
+    try:
+        dataset_id = status_resp.json().get("data", {}).get("defaultDatasetId")
+        results_resp = requests.get(
+            f"https://api.apify.com/v2/datasets/{dataset_id}/items",
+            headers={"Authorization": f"Bearer {APIFY_KEY}"},
+            timeout=30
+        )
+        perfis = results_resp.json()
+    except Exception as e:
+        return jsonify({"ok": False, "mensagem": f"Erro ao buscar resultados: {str(e)}"}), 500
 
-    com_extras.sort(key=lambda x: x["score"], reverse=True)
-    sem_extras.sort(key=lambda x: x["score"], reverse=True)
+    # Pontua e filtra candidatos
+    candidatos_com_score = []
+    for perfil in perfis:
+        score, motivos = score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa, regiao_cidades)
+        if score is None:
+            continue
 
-    candidatos = com_extras + sem_extras
+        nome = f"{perfil.get('firstName', '')} {perfil.get('lastName', '')}".strip()
+        cargo_atual = ""
+        try:
+            cargo_atual = perfil.get("currentPosition", [{}])[0].get("position", "")
+            empresa_atual = perfil.get("currentPosition", [{}])[0].get("companyName", "")
+            cargo_atual = f"{cargo_atual} @ {empresa_atual}" if empresa_atual else cargo_atual
+        except:
+            pass
 
-    # Remove campos internos
-    for c in candidatos:
-        del c["score"]
-        del c["extras_ok"]
+        city_display = ""
+        try:
+            city_display = perfil.get("location", {}).get("linkedinText", "")
+        except:
+            pass
+
+        candidatos_com_score.append({
+            "nome": nome,
+            "link": perfil.get("linkedinUrl", ""),
+            "cargo_atual": cargo_atual,
+            "cidade": city_display,
+            "open_to_work": perfil.get("openToWork", False),
+            "score": score,
+            "motivos": motivos,
+            "resumo": perfil.get("about", "")[:200] if perfil.get("about") else ""
+        })
+
+    # Ordena por score
+    candidatos_com_score.sort(key=lambda x: x["score"], reverse=True)
 
     # Envia e-mail se solicitado
-    if enviar_email and candidatos:
+    if enviar_email and candidatos_com_score:
         linhas = ""
-        for i, c in enumerate(candidatos, 1):
+        for i, c in enumerate(candidatos_com_score, 1):
+            badge_otw = '<span style="background:#22c55e;color:white;padding:2px 8px;border-radius:20px;font-size:11px;margin-left:6px;">Open to Work</span>' if c["open_to_work"] else ""
+            tags = "".join([f'<span style="background:#e8eef5;color:#1a3a5c;padding:2px 8px;border-radius:20px;font-size:11px;margin:2px;">{m}</span>' for m in c["motivos"]])
             linhas += f"""<tr>
-                <td style="padding:10px;border-bottom:1px solid #eee;color:#999;">{i}</td>
-                <td style="padding:10px;border-bottom:1px solid #eee;"><strong>{c['nome']}</strong><br>
-                <small style="color:#666;">{c['resumo']}</small></td>
-                <td style="padding:10px;border-bottom:1px solid #eee;">
-                <a href="{c['link']}" style="color:#1a3a5c;font-weight:bold;">Ver perfil →</a></td>
+                <td style="padding:12px;border-bottom:1px solid #eee;color:#999;font-weight:700;">{i}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee;">
+                    <strong style="font-size:15px;">{c['nome']}</strong>{badge_otw}<br>
+                    <span style="color:#555;font-size:13px;">{c['cargo_atual']}</span><br>
+                    <span style="color:#888;font-size:12px;">📍 {c['cidade']}</span><br>
+                    <div style="margin-top:4px;">{tags}</div>
+                </td>
+                <td style="padding:12px;border-bottom:1px solid #eee;text-align:right;">
+                    <span style="background:#1a3a5c;color:white;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">{c['score']} pts</span><br><br>
+                    <a href="{c['link']}" style="color:#1a3a5c;font-weight:bold;font-size:13px;">Ver perfil →</a>
+                </td>
             </tr>"""
-        corpo = f"""<div style="font-family:Arial,sans-serif;max-width:700px;margin:auto;">
-          <div style="background:#1a3a5c;padding:20px;border-radius:8px 8px 0 0;">
-            <h2 style="color:white;margin:0;">VIRTUS EXEC</h2>
-            <p style="color:#a8c4e0;margin:4px 0 0;font-size:13px;">Busca cruzada de candidatos</p>
-            <p style="color:#a8c4e0;margin:8px 0 0;">Busca: <strong>{cargo} | {cidade}</strong></p>
-            <p style="color:#a8c4e0;margin:2px 0 0;font-size:12px;">{datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
+
+        corpo = f"""<div style="font-family:Arial,sans-serif;max-width:750px;margin:auto;">
+          <div style="background:#1a3a5c;padding:24px;border-radius:12px 12px 0 0;">
+            <h2 style="color:white;margin:0;font-family:Arial;letter-spacing:2px;">VIRTUS EXEC</h2>
+            <p style="color:#a8c4e0;margin:4px 0 0;font-size:12px;letter-spacing:1px;">BUSCA INTELIGENTE DE CANDIDATOS</p>
+            <p style="color:#a8c4e0;margin:12px 0 0;">Busca: <strong>{cargo} | {cidade}</strong></p>
+            <p style="color:#a8c4e0;margin:2px 0 0;font-size:11px;">{datetime.now().strftime("%d/%m/%Y %H:%M")} • {len(candidatos_com_score)} candidatos ranqueados</p>
           </div>
           <table style="width:100%;border-collapse:collapse;background:white;">
-            <tr style="background:#f5f5f5;">
-              <th style="padding:10px;text-align:left;">#</th>
+            <tr style="background:#f5f7fa;">
+              <th style="padding:10px;text-align:left;width:30px;">#</th>
               <th style="padding:10px;text-align:left;">Candidato</th>
-              <th style="padding:10px;text-align:left;">LinkedIn</th>
+              <th style="padding:10px;text-align:right;width:100px;">Score</th>
             </tr>{linhas}
           </table>
-          <div style="background:#f5f5f5;padding:15px;border-radius:0 0 8px 8px;text-align:center;">
-            <small style="color:#999;">Total: {len(candidatos)} candidatos • {datetime.now().strftime("%d/%m/%Y %H:%M")}</small>
+          <div style="background:#f5f7fa;padding:15px;border-radius:0 0 12px 12px;text-align:center;">
+            <small style="color:#999;">Ranqueado por: cidade + cargo + open to work + idioma + habilidades • {datetime.now().strftime("%d/%m/%Y %H:%M")}</small>
           </div>
         </div>"""
+
         try:
             requests.post(
                 "https://api.sendgrid.com/v3/mail/send",
@@ -187,7 +271,7 @@ def buscar():
                 json={
                     "personalizations": [{"to": [{"email": DESTINATARIO}]}],
                     "from": {"email": REMETENTE},
-                    "subject": f"[Virtus Exec] {cargo} | {cidade} — {datetime.now().strftime('%d/%m/%Y')}",
+                    "subject": f"[Virtus Exec] {cargo} | {cidade} — {len(candidatos_com_score)} candidatos • {datetime.now().strftime('%d/%m/%Y')}",
                     "content": [{"type": "text/html", "value": corpo}]
                 },
                 timeout=15
@@ -195,12 +279,27 @@ def buscar():
         except Exception as e:
             print(f"Erro e-mail: {e}")
 
+    # Remove score interno da resposta
+    resultado_final = []
+    for c in candidatos_com_score:
+        resultado_final.append({
+            "nome": c["nome"],
+            "link": c["link"],
+            "cargo_atual": c["cargo_atual"],
+            "cidade": c["cidade"],
+            "open_to_work": c["open_to_work"],
+            "score": c["score"],
+            "motivos": c["motivos"],
+            "resumo": c["resumo"]
+        })
+
     return jsonify({
         "ok": True,
-        "total": len(candidatos),
-        "candidatos": candidatos,
-        "email_enviado": enviar_email and len(candidatos) > 0
+        "total": len(resultado_final),
+        "candidatos": resultado_final,
+        "email_enviado": enviar_email and len(resultado_final) > 0
     })
+
 
 if __name__ == "__main__":
     app.run(debug=False)
