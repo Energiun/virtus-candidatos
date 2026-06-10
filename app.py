@@ -12,7 +12,7 @@ app = Flask(__name__)
 # CONFIGURAÇÕES
 # =========================
 
-DESTINATARIO = "ti@virtusexec.com.br"
+DESTINATARIO = "contato@virtusexec.com.br"
 
 REMETENTE = os.environ.get("EMAIL_REMETENTE")
 SENDGRID_KEY = os.environ.get("SENDGRID_KEY")
@@ -84,23 +84,21 @@ def limitar_search_query(texto, limite=240):
 def sanitizar_input_apify(apify_input):
     novo_input = dict(apify_input)
 
+    # Garante que a query nunca passe do limite do Apify
     if "searchQuery" in novo_input:
         novo_input["searchQuery"] = limitar_search_query(novo_input.get("searchQuery", ""), 240)
 
+    # PONTO CRÍTICO:
+    # força o Actor a raspar pelo menos 1 página de resultados.
+    # Sem isso, ele pode terminar SUCCEEDED com 0 resultados.
+    novo_input["startPage"] = 1
+    novo_input["takePages"] = 1
+
+    # Segurança: se por algum motivo maxItems vier vazio
+    if not novo_input.get("maxItems"):
+        novo_input["maxItems"] = MAX_ITEMS_APIFY
+
     return novo_input
-    
-def separar_termos(texto):
-    if not texto:
-        return []
-
-    partes = []
-
-    for pedaco in str(texto).replace(";", ",").split(","):
-        termo = pedaco.strip()
-        if termo:
-            partes.append(termo)
-
-    return limpar_duplicados(partes)
 
 
 def corrigir_cidade(cidade):
