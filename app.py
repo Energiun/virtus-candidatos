@@ -685,6 +685,14 @@ def montar_inputs_busca(cargo, cidade, segmento="", empresa_anterior="", idioma=
 
 
 def iniciar_run_apify(apify_input):
+    apify_input = sanitizar_input_apify(apify_input)
+
+    print("========== CHECAGEM FINAL APIFY ==========")
+    print("SEARCH QUERY:", apify_input.get("searchQuery", ""))
+    print("TAMANHO SEARCH QUERY:", len(apify_input.get("searchQuery", "")))
+    print("INPUT FINAL:", apify_input)
+    print("========== FIM CHECAGEM FINAL ==========")
+
     url = f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/runs"
 
     headers = {
