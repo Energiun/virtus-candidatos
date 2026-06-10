@@ -340,60 +340,35 @@ def score_candidato(perfil, cargo, cidade, idioma, habilidades, empresa, origem_
 
 
 def montar_inputs_busca(cargo, cidade, idioma="", habilidades="", empresa=""):
-    cidade_corrigida = corrigir_cidade(cidade)
-    localizacao_completa = formatar_localizacao_linkedin(cidade_corrigida)
-
     buscas = []
 
     cargo_base = cargo.strip()
+    cidade_base = cidade.strip()
 
-    # 1. Busca exata com localização completa
+    # Busca 1: simples, sem locations
     buscas.append({
-        "nome": "exata",
+        "nome": "texto_livre",
         "input": {
-            "searchQuery": cargo_base,
-            "locations": [localizacao_completa],
-            "currentJobTitles": [cargo_base],
+            "searchQuery": f"{cargo_base} {cidade_base}",
             "profileScraperMode": "Full",
             "maxItems": MAX_ITEMS_TESTE
         }
     })
 
-    # 2. Busca ampla com localização completa
-    buscas.append({
-        "nome": "ampla",
-        "input": {
-            "searchQuery": cargo_base,
-            "locations": [localizacao_completa],
-            "profileScraperMode": "Full",
-            "maxItems": MAX_ITEMS_TESTE
-        }
-    })
-
-    # 3. Busca fallback: cidade no texto, sem locations
-    buscas.append({
-        "nome": "fallback_cidade_texto",
-        "input": {
-            "searchQuery": f"{cargo_base} {cidade_corrigida}",
-            "profileScraperMode": "Full",
-            "maxItems": MAX_ITEMS_TESTE
-        }
-    })
-
-    # 4. Busca comercial expandida com cidade no texto
+    # Busca 2: cargo + cidade + variações comerciais, sem locations
     cargo_n = normalizar(cargo_base)
 
     if "venda" in cargo_n or "comercial" in cargo_n or "consultor" in cargo_n or "executivo" in cargo_n:
         buscas.append({
-            "nome": "comercial_expandida",
+            "nome": "comercial_texto_livre",
             "input": {
-                "searchQuery": f"Consultor de Vendas Consultor Comercial Executivo de Vendas Representante Comercial Sales Consultant {cidade_corrigida}",
+                "searchQuery": f"{cidade_base} consultor de vendas consultor comercial executivo de vendas representante comercial sales consultant",
                 "profileScraperMode": "Full",
                 "maxItems": MAX_ITEMS_TESTE
             }
         })
 
-    # 5. Busca com extras
+    # Busca 3: extras, sem locations
     extras = []
 
     if habilidades:
@@ -407,9 +382,9 @@ def montar_inputs_busca(cargo, cidade, idioma="", habilidades="", empresa=""):
 
     if extras:
         buscas.append({
-            "nome": "extras",
+            "nome": "extras_texto_livre",
             "input": {
-                "searchQuery": f"{cargo_base} {' '.join(extras)} {cidade_corrigida}",
+                "searchQuery": f"{cargo_base} {cidade_base} {' '.join(extras)}",
                 "profileScraperMode": "Full",
                 "maxItems": MAX_ITEMS_TESTE
             }
