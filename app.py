@@ -82,21 +82,44 @@ def limitar_search_query(texto, limite=240):
     return resultado.strip()
 
 def sanitizar_input_apify(apify_input):
-    novo_input = dict(apify_input)
+    novo_input = {}
 
-    # Garante que a query nunca passe do limite do Apify
+    campos_permitidos = [
+        "profileScraperMode",
+        "searchQuery",
+        "maxItems",
+        "locations",
+        "currentCompanies",
+        "pastCompanies",
+        "schools",
+        "currentJobTitles",
+        "pastJobTitles",
+        "industryIds",
+        "profileLanguages"
+    ]
+
+    for campo in campos_permitidos:
+        if campo in apify_input:
+            valor = apify_input[campo]
+
+            if valor is None:
+                continue
+
+            if isinstance(valor, str) and not valor.strip():
+                continue
+
+            if isinstance(valor, list):
+                valor = [v for v in valor if str(v).strip()]
+                if not valor:
+                    continue
+
+            novo_input[campo] = valor
+
+    novo_input["profileScraperMode"] = novo_input.get("profileScraperMode", "Full")
+    novo_input["maxItems"] = int(novo_input.get("maxItems", MAX_ITEMS_APIFY))
+
     if "searchQuery" in novo_input:
-        novo_input["searchQuery"] = limitar_search_query(novo_input.get("searchQuery", ""), 240)
-
-    # PONTO CRÍTICO:
-    # força o Actor a raspar pelo menos 1 página de resultados.
-    # Sem isso, ele pode terminar SUCCEEDED com 0 resultados.
-    novo_input["startPage"] = 1
-    novo_input["takePages"] = 1
-
-    # Segurança: se por algum motivo maxItems vier vazio
-    if not novo_input.get("maxItems"):
-        novo_input["maxItems"] = MAX_ITEMS_APIFY
+        novo_input["searchQuery"] = limitar_search_query(novo_input["searchQuery"], 240)
 
     return novo_input
 
