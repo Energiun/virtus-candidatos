@@ -1,301 +1,397 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VIRTUS EXEC — Busca de Candidatos</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --navy: #1a3a5c;
-    --navy-dark: #0f2440;
-    --navy-light: #2a5298;
-    --accent: #4a90d9;
-    --creme: #f4f7fb;
-    --branco: #ffffff;
-    --cinza: #6b7a8d;
-    --borda: #dde4ee;
-    --sombra: 0 4px 24px rgba(26,58,92,0.10);
-  }
-  body { font-family: 'DM Sans', Arial, sans-serif; background: var(--creme); min-height: 100vh; padding: 40px 20px; }
-  .container { width: 100%; max-width: 720px; margin: auto; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtus Exec — Busca de Candidatos</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f4f7fb; min-height: 100vh; }
 
-  /* HEADER */
-  .header { text-align: center; margin-bottom: 32px; }
-  .header h1 {
-    font-family: Arial, sans-serif;
-    font-size: 2.4rem;
-    font-weight: 700;
-    color: var(--navy);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-  }
-  .header p { font-size: 0.85rem; color: var(--cinza); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; }
+    header {
+      background: #1a3a5c;
+      padding: 24px 32px;
+      color: white;
+    }
+    header h1 { font-size: 22px; letter-spacing: 3px; font-weight: 700; }
+    header p { color: #a8c4e0; font-size: 12px; margin-top: 4px; letter-spacing: 1px; }
 
-  /* CARD */
-  .card { background: var(--branco); border-radius: 14px; padding: 36px; box-shadow: var(--sombra); border-top: 4px solid var(--navy); margin-bottom: 24px; }
-  .card-titulo { font-size: 0.75rem; font-weight: 700; color: var(--navy); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
-  .card-desc { font-size: 0.88rem; color: var(--cinza); margin-bottom: 28px; line-height: 1.5; }
+    .container { max-width: 900px; margin: 32px auto; padding: 0 20px; }
 
-  /* BLOCOS */
-  .bloco { margin-bottom: 24px; }
-  .bloco-header {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 16px; padding-bottom: 10px;
-    border-bottom: 1.5px solid var(--borda);
-  }
-  .bloco-header span {
-    font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px;
-    text-transform: uppercase; color: var(--navy);
-  }
-  .bloco-header .badge {
-    font-size: 0.65rem; background: var(--navy); color: white;
-    padding: 2px 8px; border-radius: 20px; letter-spacing: 1px;
-  }
-  .bloco-header .badge-opt {
-    font-size: 0.65rem; background: #e8eef5; color: var(--cinza);
-    padding: 2px 8px; border-radius: 20px; letter-spacing: 1px;
-  }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
 
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #1a3a5c;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e8eef5;
+    }
 
-  .field { display: flex; flex-direction: column; gap: 5px; }
-  label { font-size: 0.72rem; font-weight: 700; color: #444; letter-spacing: 0.8px; text-transform: uppercase; }
-  input {
-    padding: 11px 14px; border: 1.5px solid var(--borda); border-radius: 8px;
-    font-family: 'DM Sans', Arial, sans-serif; font-size: 0.92rem; color: #1a1a1a;
-    background: #fafcff; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  input:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(26,58,92,0.08); background: white; }
-  input::placeholder { color: #bcc8d8; }
-  .hint { font-size: 0.72rem; color: #aab; margin-top: 2px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 
-  /* TOGGLE EMAIL */
-  .toggle-email {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 16px; background: #f4f7fb;
-    border: 1.5px solid var(--borda); border-radius: 8px;
-    margin-bottom: 18px; cursor: pointer; transition: border-color 0.2s;
-  }
-  .toggle-email:hover { border-color: var(--navy); }
-  .toggle-email input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; }
-  .toggle-email label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 0.88rem; font-weight: 400; color: #444; cursor: pointer; }
+    label { display: block; font-size: 11px; font-weight: 700; color: #555; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
 
-  /* BOTÃO */
-  button {
-    width: 100%; padding: 14px; background: var(--navy); color: white; border: none;
-    border-radius: 8px; font-family: 'DM Sans', Arial, sans-serif; font-size: 0.95rem;
-    font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-    cursor: pointer; transition: background 0.2s, transform 0.1s;
-  }
-  button:hover { background: var(--navy-dark); }
-  button:active { transform: scale(0.98); }
-  button:disabled { background: #aab; cursor: not-allowed; }
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid #e0e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1a3a5c;
+      background: #f8fafc;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #1a3a5c; background: white; }
+    input[type="text"]::placeholder { color: #b0bec5; }
 
-  /* STATUS */
-  .status { margin-top: 16px; padding: 14px 18px; border-radius: 8px; font-size: 0.9rem; display: none; }
-  .status.carregando { background: #eef4fc; border: 1px solid #b8d0ec; color: var(--navy); display: flex; align-items: center; gap: 10px; }
-  .status.erro { background: #fff1f2; border: 1px solid #fca5a5; color: #991b1b; display: block; }
-  .spinner { width: 18px; height: 18px; border: 2px solid #b8d0ec; border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+    .required-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: #e53e3e;
+      border-radius: 50%;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
 
-  /* RESULTADOS */
-  .resultados { display: none; }
-  .res-header {
-    background: var(--navy); padding: 20px 28px;
-    border-radius: 12px 12px 0 0;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .res-header-left h3 { color: white; font-family: Arial, sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-  .res-header-left p { color: #a8c4e0; font-size: 0.82rem; margin-top: 3px; }
-  .res-total { font-size: 2rem; font-weight: 700; color: white; }
-  .email-badge { background: rgba(255,255,255,0.15); color: #a8c4e0; font-size: 0.72rem; padding: 3px 10px; border-radius: 20px; margin-top: 6px; display: none; }
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-top: 8px;
+    }
 
-  .candidato {
-    background: white; padding: 16px 24px;
-    border-bottom: 1px solid #eef2f8;
-    display: flex; align-items: flex-start; gap: 16px;
-    transition: background 0.15s;
-  }
-  .candidato:hover { background: #f4f7fb; }
-  .candidato:last-child { border-bottom: none; border-radius: 0 0 12px 12px; }
-  .num { font-size: 0.75rem; color: #b0bec5; font-weight: 700; min-width: 22px; padding-top: 3px; }
-  .info { flex: 1; }
-  .info strong { display: block; font-size: 0.92rem; color: #1a1a1a; margin-bottom: 3px; }
-  .info small { font-size: 0.78rem; color: #7a8a9a; line-height: 1.4; }
-  .ver-btn {
-    color: var(--navy); font-weight: 600; font-size: 0.8rem;
-    text-decoration: none; white-space: nowrap;
-    padding: 6px 14px; border: 1.5px solid var(--navy);
-    border-radius: 6px; transition: all 0.2s;
-  }
-  .ver-btn:hover { background: var(--navy); color: white; }
+    button {
+      background: #1a3a5c;
+      color: white;
+      border: none;
+      padding: 14px 36px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:hover { background: #24527a; }
+    button:active { transform: scale(0.98); }
+    button:disabled { background: #90a4ae; cursor: not-allowed; transform: none; }
 
-  .nenhum { background: white; padding: 40px; text-align: center; color: #999; border-radius: 0 0 12px 12px; font-size: 0.9rem; }
-  .rodape { text-align: center; margin-top: 28px; font-size: 0.75rem; color: #b0bec5; }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #555;
+      cursor: pointer;
+    }
+    .checkbox-label input { width: 16px; height: 16px; accent-color: #1a3a5c; cursor: pointer; }
 
-  @media (max-width: 500px) {
-    .grid-2, .grid-3 { grid-template-columns: 1fr; }
-    .header h1 { font-size: 1.8rem; }
-  }
-</style>
+    /* Resultados */
+    #status {
+      text-align: center;
+      padding: 16px;
+      font-size: 14px;
+      color: #555;
+      display: none;
+    }
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid #e0e8f0;
+      border-top-color: #1a3a5c;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #resultados { display: none; }
+
+    .resultado-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .resultado-header h2 { font-size: 14px; font-weight: 700; color: #1a3a5c; letter-spacing: 1px; }
+    .total-badge {
+      background: #1a3a5c;
+      color: white;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .candidato {
+      background: white;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      gap: 16px;
+      align-items: start;
+      transition: box-shadow 0.2s;
+    }
+    .candidato:hover { box-shadow: 0 4px 16px rgba(26,58,92,0.12); }
+
+    .rank {
+      font-size: 18px;
+      font-weight: 700;
+      color: #c5d5e5;
+      padding-top: 2px;
+      text-align: center;
+    }
+    .rank.top { color: #1a3a5c; }
+
+    .info-nome {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a3a5c;
+      margin-bottom: 3px;
+    }
+
+    .info-cargo {
+      font-size: 13px;
+      color: #444;
+      margin-bottom: 3px;
+    }
+
+    .info-cidade {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag {
+      background: #e8eef5;
+      color: #1a3a5c;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tag.green { background: #dcfce7; color: #15803d; }
+    .tag.gold { background: #fef3c7; color: #92400e; }
+
+    .score-col {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .score-badge {
+      background: #1a3a5c;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .ver-perfil {
+      color: #1a3a5c;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      border: 1.5px solid #1a3a5c;
+      padding: 5px 14px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .ver-perfil:hover { background: #1a3a5c; color: white; }
+
+    .email-ok {
+      background: #dcfce7;
+      color: #15803d;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .candidato { grid-template-columns: 28px 1fr; }
+      .score-col { display: none; }
+    }
+  </style>
 </head>
 <body>
-<div class="container">
 
-  <div class="header">
-    <h1>Virtus Exec</h1>
-    <p>Busca cruzada de candidatos</p>
+<header>
+  <h1>VIRTUS EXEC</h1>
+  <p>BUSCA INTELIGENTE DE CANDIDATOS</p>
+</header>
+
+<div class="container">
+  <div class="card">
+    <div class="section-title">Filtros obrigatórios <span class="required-dot"></span></div>
+    <div class="grid-2">
+      <div>
+        <label>Cargo <span class="required-dot"></span></label>
+        <input type="text" id="cargo" placeholder="ex: Consultor de Vendas">
+      </div>
+      <div>
+        <label>Cidade <span class="required-dot"></span></label>
+        <input type="text" id="cidade" placeholder="ex: Paulínia">
+      </div>
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-titulo">Busca</div>
-    <div class="card-desc">Preencha o perfil desejado. Os campos obrigatórios definem o alvo principal da busca.</div>
-
-    <!-- BLOCO OBRIGATÓRIO -->
-    <div class="bloco">
-      <div class="bloco-header">
-        <span>Campos principais</span>
-        <div class="badge">Obrigatório</div>
+    <div class="section-title">Filtros opcionais</div>
+    <div class="grid-3">
+      <div>
+        <label>Idioma</label>
+        <input type="text" id="idioma" placeholder="ex: inglês">
       </div>
-      <div class="grid-2">
-        <div class="field">
-          <label>Cargo</label>
-          <input type="text" id="cargo" placeholder="Ex: Advogado Tributário" />
-        </div>
-        <div class="field">
-          <label>Cidade</label>
-          <input type="text" id="cidade" placeholder="Ex: Campinas" value="Campinas" />
-          <div class="hint">A busca expande automaticamente para a região</div>
-        </div>
+      <div>
+        <label>Habilidades</label>
+        <input type="text" id="habilidades" placeholder="ex: SAP, vendas B2B">
+      </div>
+      <div>
+        <label>Empresa (passada)</label>
+        <input type="text" id="empresa" placeholder="ex: Wizard">
       </div>
     </div>
-
-    <!-- BLOCO EXTRAS -->
-    <div class="bloco">
-      <div class="bloco-header">
-        <span>Extras</span>
-        <div class="badge-opt">Opcional — filtra com precisão</div>
-      </div>
-      <div class="grid-3">
-        <div class="field">
-          <label>Idioma</label>
-          <input type="text" id="idioma" placeholder="Ex: inglês" />
-          <div class="hint">Nível avançado ou fluente</div>
-        </div>
-        <div class="field">
-          <label>Habilidades</label>
-          <input type="text" id="habilidades" placeholder="Ex: SAP, Excel" />
-          <div class="hint">Separe por vírgula</div>
-        </div>
-        <div class="field">
-          <label>Empresa</label>
-          <input type="text" id="empresa" placeholder="Ex: Petrobras" />
-          <div class="hint">Já trabalhou nessa empresa</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="toggle-email" onclick="document.getElementById('chk-email').click()">
-      <input type="checkbox" id="chk-email" onclick="event.stopPropagation()">
-      <label for="chk-email">Enviar lista também para <strong>ti@virtusexec.com.br</strong></label>
-    </div>
-
-    <button id="btn" onclick="buscar()">Buscar candidatos</button>
-    <div id="status" class="status"></div>
   </div>
 
-  <!-- RESULTADOS -->
-  <div class="resultados" id="resultados">
-    <div class="res-header">
-      <div class="res-header-left">
-        <h3 id="res-cargo">Candidatos</h3>
-        <p id="res-cidade"></p>
-        <div id="email-badge" class="email-badge">✉ Lista enviada para ti@virtusexec.com.br</div>
-      </div>
-      <div class="res-total" id="res-total"></div>
+  <div class="actions">
+    <button id="btnBuscar" onclick="buscar()">🔍 BUSCAR CANDIDATOS</button>
+    <label class="checkbox-label">
+      <input type="checkbox" id="enviarEmail">
+      Enviar resultado por e-mail
+    </label>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="resultados">
+    <div id="emailOk" class="email-ok">✅ Resultado enviado para ti@virtusexec.com.br</div>
+    <div class="resultado-header">
+      <h2>CANDIDATOS RANQUEADOS</h2>
+      <span class="total-badge" id="totalBadge">0 encontrados</span>
     </div>
     <div id="lista"></div>
   </div>
-
-  <div class="rodape">Busca cruzada via Google • LinkedIn • Virtus Exec</div>
 </div>
 
 <script>
 async function buscar() {
   const cargo = document.getElementById("cargo").value.trim();
-  const cidade = document.getElementById("cidade").value.trim() || "Campinas";
-  const idioma = document.getElementById("idioma").value.trim();
-  const habilidades = document.getElementById("habilidades").value.trim();
-  const empresa = document.getElementById("empresa").value.trim();
-  const enviarEmail = document.getElementById("chk-email").checked;
-  const btn = document.getElementById("btn");
-  const status = document.getElementById("status");
+  const cidade = document.getElementById("cidade").value.trim();
 
-  if (!cargo) {
-    status.className = "status erro"; status.style.display = "block";
-    status.innerHTML = "⚠️ Informe o cargo desejado."; return;
+  if (!cargo || !cidade) {
+    alert("Cargo e cidade são obrigatórios.");
+    return;
   }
 
-  document.getElementById("resultados").style.display = "none";
+  const btn = document.getElementById("btnBuscar");
   btn.disabled = true;
-  status.className = "status carregando"; status.style.display = "flex";
-  status.innerHTML = '<div class="spinner"></div> Executando busca cruzada... aguarde alguns segundos.';
+  btn.textContent = "Buscando...";
+
+  const status = document.getElementById("status");
+  status.style.display = "block";
+  status.innerHTML = '<span class="spinner"></span> Buscando no LinkedIn via Apify... isso pode levar até 2 minutos.';
+
+  document.getElementById("resultados").style.display = "none";
+  document.getElementById("emailOk").style.display = "none";
+  document.getElementById("lista").innerHTML = "";
 
   try {
     const resp = await fetch("/buscar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cargo, cidade, idioma, habilidades, empresa, enviar_email: enviarEmail })
+      body: JSON.stringify({
+        cargo,
+        cidade,
+        idioma: document.getElementById("idioma").value.trim(),
+        habilidades: document.getElementById("habilidades").value.trim(),
+        empresa: document.getElementById("empresa").value.trim(),
+        enviar_email: document.getElementById("enviarEmail").checked
+      })
     });
+
     const data = await resp.json();
+
     status.style.display = "none";
+    btn.disabled = false;
+    btn.textContent = "🔍 BUSCAR CANDIDATOS";
 
-    if (data.ok) {
-      exibir(data, cargo, cidade, enviarEmail);
-    } else {
-      status.className = "status erro"; status.style.display = "block";
-      status.innerHTML = `❌ ${data.mensagem}`;
+    if (!data.ok) {
+      alert("Erro: " + data.mensagem);
+      return;
     }
-  } catch(e) {
-    status.className = "status erro"; status.style.display = "block";
-    status.innerHTML = "❌ Falha na conexão. Tente novamente.";
+
+    document.getElementById("resultados").style.display = "block";
+    document.getElementById("totalBadge").textContent = data.total + " encontrado" + (data.total !== 1 ? "s" : "");
+
+    if (data.email_enviado) {
+      document.getElementById("emailOk").style.display = "block";
+    }
+
+    const lista = document.getElementById("lista");
+    if (data.candidatos.length === 0) {
+      lista.innerHTML = '<p style="text-align:center;color:#888;padding:32px;">Nenhum candidato encontrado para esse filtro.</p>';
+      return;
+    }
+
+    data.candidatos.forEach((c, i) => {
+      const rank = i + 1;
+      const rankClass = rank <= 3 ? "rank top" : "rank";
+      const openToWork = c.open_to_work ? '<span class="tag green">✓ Open to Work</span>' : '';
+      const tags = c.motivos.map(m => `<span class="tag">${m}</span>`).join("");
+      const resumo = c.resumo ? `<p style="font-size:12px;color:#888;margin-top:6px;line-height:1.5;">${c.resumo}</p>` : "";
+
+      lista.innerHTML += `
+        <div class="candidato">
+          <div class="${rankClass}">${rank}</div>
+          <div>
+            <div class="info-nome">${c.nome}</div>
+            <div class="info-cargo">${c.cargo_atual || "—"}</div>
+            <div class="info-cidade">📍 ${c.cidade || "—"}</div>
+            <div class="tags">${openToWork}${tags}</div>
+            ${resumo}
+          </div>
+          <div class="score-col">
+            <span class="score-badge">${c.score} pts</span>
+            <a href="${c.link}" target="_blank" class="ver-perfil">Ver perfil →</a>
+          </div>
+        </div>`;
+    });
+
+  } catch (err) {
+    status.style.display = "none";
+    btn.disabled = false;
+    btn.textContent = "🔍 BUSCAR CANDIDATOS";
+    alert("Erro de conexão: " + err.message);
   }
-  btn.disabled = false;
 }
 
-function exibir(data, cargo, cidade, emailEnviado) {
-  document.getElementById("res-cargo").textContent = cargo;
-  document.getElementById("res-cidade").textContent = cidade + " • " + data.total + " perfis encontrados";
-  document.getElementById("res-total").textContent = data.total;
-
-  const badge = document.getElementById("email-badge");
-  badge.style.display = emailEnviado && data.total > 0 ? "block" : "none";
-
-  const lista = document.getElementById("lista");
-  if (!data.candidatos || data.candidatos.length === 0) {
-    lista.innerHTML = '<div class="nenhum">Nenhum candidato encontrado. Tente termos mais amplos.</div>';
-  } else {
-    lista.innerHTML = data.candidatos.map((c, i) => `
-      <div class="candidato">
-        <div class="num">${i+1}</div>
-        <div class="info">
-          <strong>${c.nome}</strong>
-          <small>${c.resumo}</small>
-        </div>
-        <a href="${c.link}" target="_blank" class="ver-btn">Ver perfil →</a>
-      </div>
-    `).join("");
-  }
-
-  const box = document.getElementById("resultados");
-  box.style.display = "block";
-  box.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-document.addEventListener("keydown", e => { if (e.key === "Enter") buscar(); });
+document.querySelectorAll("input").forEach(input => {
+  input.addEventListener("keypress", e => {
+    if (e.key === "Enter") buscar();
+  });
+});
 </script>
 </body>
 </html>
