@@ -594,12 +594,11 @@ def montar_inputs_busca(cargo, cidade, segmento="", empresa_anterior="", idioma=
 
     buscas = []
 
-    # Busca 1: mais parecida com o filtro nativo do LinkedIn.
-    # Cargo vai em currentJobTitles, cidade vai em locations.
+    # Busca 1: filtro nativo, com query curta.
     buscas.append({
         "nome": "cargo_cidade_nativo",
         "input": {
-            "searchQuery": cargo,
+            "searchQuery": limitar_search_query(cargo, 280),
             "locations": localizacoes,
             "currentJobTitles": titulos,
             "profileScraperMode": "Full",
@@ -608,17 +607,16 @@ def montar_inputs_busca(cargo, cidade, segmento="", empresa_anterior="", idioma=
     })
 
     # Busca 2: texto livre com cargo + cidade.
-    # Essa busca salva quando o campo locations do Apify falha.
     buscas.append({
         "nome": "texto_livre",
         "input": {
-            "searchQuery": f"{cargo} {cidade_corrigida}",
+            "searchQuery": limitar_search_query(f"{cargo} {cidade_corrigida}", 280),
             "profileScraperMode": "Full",
             "maxItems": MAX_ITEMS_APIFY
         }
     })
 
-    # Busca 3: segmento/idiomas/empresa/palavras.
+    # Busca 3: segmento / empresa / idioma / palavras-chave.
     query_segmento = montar_query_segmento(
         cargo,
         cidade_corrigida,
@@ -632,38 +630,39 @@ def montar_inputs_busca(cargo, cidade, segmento="", empresa_anterior="", idioma=
         buscas.append({
             "nome": "segmento_idiomas",
             "input": {
-                "searchQuery": query_segmento,
+                "searchQuery": limitar_search_query(query_segmento, 280),
                 "profileScraperMode": "Full",
                 "maxItems": MAX_ITEMS_APIFY
             }
         })
 
-    # Busca 4: expansão comercial, só para vagas de vendas/comercial.
+    # Busca 4: expansão comercial curta.
     if cargo_eh_comercial(cargo):
         termos_comerciais = (
-            "consultor de vendas consultora de vendas "
-            "consultor comercial consultora comercial "
-            "executivo de vendas executiva de vendas "
-            "representante comercial sales consultant account executive "
-            "consultor de negócios vendas consultivas"
+            "consultor vendas comercial executivo representante sales "
+            "negócios b2b prospecção atendimento"
+        )
+
+        query_comercial = (
+            f"{cidade_corrigida} {cargo} {termos_comerciais} "
+            f"{segmento} {empresa_anterior} {idioma} {palavras_chave}"
         )
 
         buscas.append({
             "nome": "empresa_segmento",
             "input": {
-                "searchQuery": f"{cidade_corrigida} {termos_comerciais} {segmento} {empresa_anterior} {idioma} {palavras_chave}",
+                "searchQuery": limitar_search_query(query_comercial, 280),
                 "profileScraperMode": "Full",
                 "maxItems": MAX_ITEMS_APIFY
             }
         })
 
-    # Se a empresa anterior vier como URL do LinkedIn, usamos pastCompanies.
-    # Se vier só "Wizard", usamos como palavra-chave e ranking, para não fechar demais.
+    # Busca 5: empresa anterior nativa, só se vier URL do LinkedIn.
     if empresa_anterior and "linkedin.com/company" in empresa_anterior.lower():
         buscas.append({
             "nome": "empresa_linkedin_nativa",
             "input": {
-                "searchQuery": cargo,
+                "searchQuery": limitar_search_query(cargo, 280),
                 "locations": localizacoes,
                 "pastCompanies": [empresa_anterior.strip()],
                 "profileScraperMode": "Full",
