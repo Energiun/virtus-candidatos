@@ -17,7 +17,7 @@ APIFY_KEY = os.environ.get("APIFY_KEY")
 APIFY_ACTOR = "harvestapi~linkedin-profile-search"
 
 # Teste econômico. Depois que funcionar, pode subir para 25.
-MAX_ITEMS_TESTE = 10
+MAX_ITEMS_TESTE = 25
 
 
 def normalizar(texto):
@@ -327,30 +327,46 @@ def montar_inputs_busca(cargo, cidade, idioma="", habilidades="", empresa=""):
 
     buscas = []
 
-    # 1. Busca exata: cargo no título atual + cidade
+    cargo_base = cargo.strip()
+
+    # 1. Busca exata: cargo digitado + cidade
     buscas.append({
         "nome": "exata",
         "input": {
-            "searchQuery": cargo,
+            "searchQuery": cargo_base,
             "locations": [localizacao],
-            "currentJobTitles": [cargo],
+            "currentJobTitles": [cargo_base],
             "profileScraperMode": "Full",
             "maxItems": MAX_ITEMS_TESTE
         }
     })
 
-    # 2. Busca ampla: cargo + cidade
+    # 2. Busca ampla: cargo digitado + cidade, sem travar currentJobTitles
     buscas.append({
         "nome": "ampla",
         "input": {
-            "searchQuery": cargo,
+            "searchQuery": cargo_base,
             "locations": [localizacao],
             "profileScraperMode": "Full",
             "maxItems": MAX_ITEMS_TESTE
         }
     })
 
-    # 3. Busca com extras: só roda se tiver extra preenchido
+    # 3. Busca comercial expandida
+    cargo_n = normalizar(cargo_base)
+
+    if "venda" in cargo_n or "comercial" in cargo_n or "consultor" in cargo_n:
+        buscas.append({
+            "nome": "comercial_expandida",
+            "input": {
+                "searchQuery": "Consultor de Vendas OR Consultor Comercial OR Executivo de Vendas OR Representante Comercial OR Sales Consultant",
+                "locations": [localizacao],
+                "profileScraperMode": "Full",
+                "maxItems": MAX_ITEMS_TESTE
+            }
+        })
+
+    # 4. Busca com extras: só roda se tiver extra preenchido
     extras = []
 
     if habilidades:
@@ -366,7 +382,7 @@ def montar_inputs_busca(cargo, cidade, idioma="", habilidades="", empresa=""):
         buscas.append({
             "nome": "extras",
             "input": {
-                "searchQuery": f"{cargo} {' '.join(extras)}",
+                "searchQuery": f"{cargo_base} {' '.join(extras)}",
                 "locations": [localizacao],
                 "profileScraperMode": "Full",
                 "maxItems": MAX_ITEMS_TESTE
