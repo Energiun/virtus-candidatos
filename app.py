@@ -433,7 +433,7 @@ def montar_apify_input(cargo, cidade, regiao_cidades):
     return {
         "search": cargo,
         "locations": regiao_cidades,
-        "profileScraperMode": "Full ($0.1 per search page + $0.004 per full profile)",
+        "profileScraperMode": "Full",
         "maxItems": MAX_ITEMS_TESTE
     }
 
