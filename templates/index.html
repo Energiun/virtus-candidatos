@@ -3,112 +3,299 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Virtus Exec — Busca de Candidatos</title>
+  <title>Virtus Exec — Busca Inteligente de Candidatos</title>
+
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: #f4f7fb; min-height: 100vh; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      min-height: 100vh;
+      color: #1a3a5c;
+    }
 
     header {
-      background: #1a3a5c;
-      padding: 24px 32px;
+      background: linear-gradient(135deg, #102a43, #1a3a5c);
+      padding: 28px 32px;
       color: white;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.12);
     }
-    header h1 { font-size: 22px; letter-spacing: 3px; font-weight: 700; }
-    header p { color: #a8c4e0; font-size: 12px; margin-top: 4px; letter-spacing: 1px; }
 
-    .container { max-width: 900px; margin: 32px auto; padding: 0 20px; }
+    header h1 {
+      font-size: 24px;
+      letter-spacing: 3px;
+      font-weight: 800;
+    }
+
+    header p {
+      color: #b8d2ec;
+      font-size: 12px;
+      margin-top: 6px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 0 20px 60px;
+    }
+
+    .intro {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 22px 26px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 24px;
+      border-left: 5px solid #1a3a5c;
+    }
+
+    .intro h2 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #1a3a5c;
+    }
+
+    .intro p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #53677a;
+    }
 
     .card {
       background: white;
-      border-radius: 12px;
-      padding: 28px;
+      border-radius: 14px;
+      padding: 26px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-      margin-bottom: 24px;
+      margin-bottom: 22px;
     }
 
     .section-title {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 800;
       letter-spacing: 2px;
       color: #1a3a5c;
       text-transform: uppercase;
-      margin-bottom: 16px;
-      padding-bottom: 8px;
+      margin-bottom: 18px;
+      padding-bottom: 9px;
       border-bottom: 2px solid #e8eef5;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-
-    label { display: block; font-size: 11px; font-weight: 700; color: #555; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1.5px solid #e0e8f0;
-      border-radius: 8px;
-      font-size: 14px;
-      color: #1a3a5c;
-      background: #f8fafc;
-      transition: border-color 0.2s;
-      outline: none;
+    .section-title small {
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 500;
+      color: #789;
+      font-size: 12px;
     }
-    input[type="text"]:focus { border-color: #1a3a5c; background: white; }
-    input[type="text"]::placeholder { color: #b0bec5; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 18px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 800;
+      color: #405568;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
 
     .required-dot {
       display: inline-block;
-      width: 6px; height: 6px;
+      width: 6px;
+      height: 6px;
       background: #e53e3e;
       border-radius: 50%;
       margin-left: 4px;
       vertical-align: middle;
     }
 
+    input[type="text"] {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid #dce7f0;
+      border-radius: 9px;
+      font-size: 14px;
+      color: #1a3a5c;
+      background: #f8fafc;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: #1a3a5c;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(26,58,92,0.08);
+    }
+
+    input[type="text"]::placeholder {
+      color: #aebdcc;
+    }
+
+    .hint {
+      margin-top: 7px;
+      font-size: 12px;
+      color: #6c7f90;
+      line-height: 1.45;
+    }
+
+    .hint strong {
+      color: #1a3a5c;
+    }
+
+    .search-logic {
+      background: #f8fafc;
+      border: 1px solid #e0e8f0;
+      border-radius: 12px;
+      padding: 18px;
+      margin-top: 18px;
+    }
+
+    .search-logic h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      color: #1a3a5c;
+    }
+
+    .logic-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .logic-item {
+      background: white;
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px solid #e6edf4;
+    }
+
+    .logic-item strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: #1a3a5c;
+    }
+
+    .logic-item span {
+      font-size: 12px;
+      color: #6a7c8e;
+      line-height: 1.4;
+    }
+
     .actions {
       display: flex;
       align-items: center;
-      gap: 20px;
-      margin-top: 8px;
+      gap: 18px;
+      margin-top: 24px;
+      flex-wrap: wrap;
     }
 
     button {
       background: #1a3a5c;
       color: white;
       border: none;
-      padding: 14px 36px;
-      border-radius: 8px;
+      padding: 14px 34px;
+      border-radius: 9px;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: 1px;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 3px 10px rgba(26,58,92,0.18);
     }
-    button:hover { background: #24527a; }
-    button:active { transform: scale(0.98); }
-    button:disabled { background: #90a4ae; cursor: not-allowed; transform: none; }
+
+    button:hover {
+      background: #24527a;
+      box-shadow: 0 5px 15px rgba(26,58,92,0.25);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      background: #90a4ae;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .secondary-btn {
+      background: #e8eef5;
+      color: #1a3a5c;
+      box-shadow: none;
+      padding: 11px 18px;
+      font-size: 12px;
+    }
+
+    .secondary-btn:hover {
+      background: #d9e6f2;
+      box-shadow: none;
+    }
 
     .checkbox-label {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 13px;
-      color: #555;
+      color: #526678;
+      cursor: pointer;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 600;
+      margin-bottom: 0;
+    }
+
+    .checkbox-label input {
+      width: 17px;
+      height: 17px;
+      accent-color: #1a3a5c;
       cursor: pointer;
     }
-    .checkbox-label input { width: 16px; height: 16px; accent-color: #1a3a5c; cursor: pointer; }
 
-    /* Resultados */
     #status {
       text-align: center;
-      padding: 16px;
+      padding: 18px;
       font-size: 14px;
-      color: #555;
+      color: #526678;
       display: none;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+      margin-top: 20px;
     }
+
     .spinner {
       display: inline-block;
-      width: 18px; height: 18px;
+      width: 18px;
+      height: 18px;
       border: 2px solid #e0e8f0;
       border-top-color: #1a3a5c;
       border-radius: 50%;
@@ -116,79 +303,136 @@
       vertical-align: middle;
       margin-right: 8px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
 
-    #resultados { display: none; }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #resultados {
+      display: none;
+      margin-top: 24px;
+    }
 
     .resultado-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 16px;
+      background: white;
+      padding: 18px 20px;
+      border-radius: 12px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.05);
     }
-    .resultado-header h2 { font-size: 14px; font-weight: 700; color: #1a3a5c; letter-spacing: 1px; }
+
+    .resultado-header h2 {
+      font-size: 14px;
+      font-weight: 800;
+      color: #1a3a5c;
+      letter-spacing: 1px;
+    }
+
     .total-badge {
       background: #1a3a5c;
       color: white;
-      padding: 4px 14px;
+      padding: 5px 14px;
       border-radius: 20px;
       font-size: 12px;
+      font-weight: 800;
+    }
+
+    .email-ok {
+      background: #dcfce7;
+      color: #15803d;
+      padding: 12px 18px;
+      border-radius: 9px;
+      font-size: 13px;
       font-weight: 700;
+      margin-bottom: 16px;
+      display: none;
     }
 
     .candidato {
       background: white;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 18px 20px;
       margin-bottom: 12px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.06);
       display: grid;
-      grid-template-columns: 32px 1fr auto;
+      grid-template-columns: 38px 1fr auto;
       gap: 16px;
       align-items: start;
-      transition: box-shadow 0.2s;
+      transition: box-shadow 0.2s, transform 0.2s;
     }
-    .candidato:hover { box-shadow: 0 4px 16px rgba(26,58,92,0.12); }
+
+    .candidato:hover {
+      box-shadow: 0 5px 18px rgba(26,58,92,0.12);
+      transform: translateY(-1px);
+    }
 
     .rank {
       font-size: 18px;
-      font-weight: 700;
-      color: #c5d5e5;
+      font-weight: 800;
+      color: #b4c6d8;
       padding-top: 2px;
       text-align: center;
     }
-    .rank.top { color: #1a3a5c; }
+
+    .rank.top {
+      color: #1a3a5c;
+    }
 
     .info-nome {
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 800;
       color: #1a3a5c;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
     }
 
     .info-cargo {
       font-size: 13px;
-      color: #444;
-      margin-bottom: 3px;
+      color: #3f4f5e;
+      margin-bottom: 4px;
+      line-height: 1.45;
     }
 
     .info-cidade {
       font-size: 12px;
-      color: #888;
+      color: #7a8b9b;
       margin-bottom: 8px;
     }
 
-    .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .resumo {
+      font-size: 12px;
+      color: #6d7f90;
+      margin-top: 8px;
+      line-height: 1.5;
+      max-width: 760px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
     .tag {
       background: #e8eef5;
       color: #1a3a5c;
-      padding: 3px 10px;
+      padding: 3px 9px;
       border-radius: 20px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
     }
-    .tag.green { background: #dcfce7; color: #15803d; }
-    .tag.gold { background: #fef3c7; color: #92400e; }
+
+    .tag.green {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .tag.gold {
+      background: #fef3c7;
+      color: #92400e;
+    }
 
     .score-col {
       text-align: right;
@@ -196,109 +440,523 @@
       flex-direction: column;
       align-items: flex-end;
       gap: 8px;
+      min-width: 110px;
     }
+
     .score-badge {
       background: #1a3a5c;
       color: white;
-      padding: 4px 12px;
+      padding: 5px 13px;
       border-radius: 20px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
     }
+
     .ver-perfil {
       color: #1a3a5c;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
       text-decoration: none;
       border: 1.5px solid #1a3a5c;
-      padding: 5px 14px;
-      border-radius: 6px;
+      padding: 6px 14px;
+      border-radius: 7px;
       transition: all 0.2s;
+      white-space: nowrap;
     }
-    .ver-perfil:hover { background: #1a3a5c; color: white; }
 
-    .email-ok {
-      background: #dcfce7;
-      color: #15803d;
-      padding: 10px 18px;
-      border-radius: 8px;
+    .ver-perfil:hover {
+      background: #1a3a5c;
+      color: white;
+    }
+
+    .empty-state {
+      text-align: center;
+      background: white;
+      border-radius: 12px;
+      padding: 34px;
+      color: #718396;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+    }
+
+    .empty-state strong {
+      color: #1a3a5c;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .help-tab {
+      position: fixed;
+      right: 0;
+      top: 220px;
+      background: #1a3a5c;
+      color: white;
+      padding: 13px 10px;
+      border-radius: 10px 0 0 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      z-index: 999;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      user-select: none;
+    }
+
+    .help-panel {
+      position: fixed;
+      right: -430px;
+      top: 0;
+      width: 410px;
+      max-width: 92vw;
+      height: 100vh;
+      background: white;
+      z-index: 1000;
+      box-shadow: -6px 0 22px rgba(0,0,0,0.18);
+      transition: right 0.25s ease;
+      overflow-y: auto;
+    }
+
+    .help-panel.open {
+      right: 0;
+    }
+
+    .help-header {
+      background: #1a3a5c;
+      color: white;
+      padding: 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .help-header h3 {
+      font-size: 16px;
+      letter-spacing: 1px;
+    }
+
+    .close-help {
+      background: transparent;
+      color: white;
+      border: 1px solid rgba(255,255,255,0.4);
+      box-shadow: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .close-help:hover {
+      background: rgba(255,255,255,0.12);
+      box-shadow: none;
+    }
+
+    .help-content {
+      padding: 22px;
+    }
+
+    .help-block {
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #edf2f7;
+    }
+
+    .help-block h4 {
+      font-size: 14px;
+      color: #1a3a5c;
+      margin-bottom: 8px;
+    }
+
+    .help-block p,
+    .help-block li {
       font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      display: none;
+      color: #5f7284;
+      line-height: 1.55;
     }
 
-    @media (max-width: 600px) {
-      .grid-2, .grid-3 { grid-template-columns: 1fr; }
-      .candidato { grid-template-columns: 28px 1fr; }
-      .score-col { display: none; }
+    .help-block ul {
+      margin-left: 18px;
+      margin-top: 8px;
+    }
+
+    .example-box {
+      background: #f8fafc;
+      border: 1px solid #e0e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #405568;
+      line-height: 1.55;
+    }
+
+    .example-box strong {
+      color: #1a3a5c;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 24, 38, 0.35);
+      z-index: 998;
+    }
+
+    .overlay.open {
+      display: block;
+    }
+
+    @media (max-width: 800px) {
+      .grid-2,
+      .grid-3,
+      .logic-list {
+        grid-template-columns: 1fr;
+      }
+
+      .candidato {
+        grid-template-columns: 32px 1fr;
+      }
+
+      .score-col {
+        grid-column: 2;
+        align-items: flex-start;
+        text-align: left;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .resultado-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .help-tab {
+        top: auto;
+        bottom: 20px;
+        right: 14px;
+        writing-mode: horizontal-tb;
+        border-radius: 999px;
+        padding: 12px 16px;
+      }
     }
   </style>
 </head>
+
 <body>
 
 <header>
   <h1>VIRTUS EXEC</h1>
-  <p>BUSCA INTELIGENTE DE CANDIDATOS</p>
+  <p>Busca inteligente de candidatos • LinkedIn + Apify + Ranking</p>
 </header>
 
+<div class="help-tab" onclick="toggleHelp()">Dicas / dúvidas</div>
+<div id="overlay" class="overlay" onclick="toggleHelp()"></div>
+
+<aside id="helpPanel" class="help-panel">
+  <div class="help-header">
+    <h3>Manual de busca</h3>
+    <button class="close-help" onclick="toggleHelp()">Fechar</button>
+  </div>
+
+  <div class="help-content">
+    <div class="help-block">
+      <h4>Como a busca funciona?</h4>
+      <p>
+        A busca tenta encontrar candidatos usando filtros semelhantes aos filtros nativos do LinkedIn:
+        cargo, localização, empresas, idioma, segmento e palavras-chave. Depois o sistema ranqueia os perfis.
+      </p>
+    </div>
+
+    <div class="help-block">
+      <h4>1. Cargo / título</h4>
+      <p>
+        É o cargo principal que você quer encontrar. Use o nome mais comum da vaga.
+      </p>
+      <div class="example-box">
+        <strong>Exemplos:</strong><br>
+        Consultor de vendas<br>
+        Executivo de vendas<br>
+        Consultor comercial<br>
+        Representante comercial<br>
+        Sales Consultant
+      </div>
+    </div>
+
+    <div class="help-block">
+      <h4>2. Cidade</h4>
+      <p>
+        É a localização principal do candidato. O sistema prioriza quem mora ou trabalha nessa cidade.
+      </p>
+      <div class="example-box">
+        <strong>Exemplos:</strong><br>
+        Paulínia<br>
+        Campinas<br>
+        Valinhos<br>
+        Jundiaí
+      </div>
+    </div>
+
+    <div class="help-block">
+      <h4>3. Segmento desejado</h4>
+      <p>
+        Use para indicar o mercado ou tipo de experiência que combina com a vaga.
+        Esse campo ajuda o sistema a subir bons candidatos no ranking.
+      </p>
+      <div class="example-box">
+        <strong>Exemplo para escola de inglês:</strong><br>
+        curso de inglês, escola de idiomas, educacional, matrícula, captação de alunos
+      </div>
+    </div>
+
+    <div class="help-block">
+      <h4>4. Empresa anterior desejada</h4>
+      <p>
+        Use quando você quer dar preferência para quem já passou por uma empresa ou rede específica.
+        Não use como único critério, porque pode fechar demais a busca.
+      </p>
+      <div class="example-box">
+        <strong>Exemplos:</strong><br>
+        Wizard<br>
+        CNA<br>
+        Fisk<br>
+        Wise Up<br>
+        CCAA
+      </div>
+    </div>
+
+    <div class="help-block">
+      <h4>5. Idioma</h4>
+      <p>
+        Use quando o idioma for relevante para a vaga. Para vagas de escola de inglês, coloque “inglês”.
+      </p>
+      <div class="example-box">
+        <strong>Exemplos:</strong><br>
+        inglês<br>
+        espanhol<br>
+        francês
+      </div>
+    </div>
+
+    <div class="help-block">
+      <h4>6. Palavras-chave</h4>
+      <p>
+        Use termos que podem aparecer no perfil, resumo ou experiências do candidato.
+      </p>
+      <div class="example-box">
+        <strong>Exemplos:</strong><br>
+        vendas consultivas, CRM, prospecção, atendimento, B2B, B2C, matrícula, captação
+      </div>
+    </div>
+
+    <div class="help-block">
+      <h4>Exemplo ideal</h4>
+      <div class="example-box">
+        <strong>Cargo:</strong> Consultor de vendas<br>
+        <strong>Cidade:</strong> Paulínia<br>
+        <strong>Segmento:</strong> curso de inglês, escola de idiomas, educacional<br>
+        <strong>Empresa anterior:</strong> Wizard<br>
+        <strong>Idioma:</strong> inglês<br>
+        <strong>Palavras-chave:</strong> matrícula, captação de alunos, vendas consultivas
+      </div>
+    </div>
+
+    <div class="help-block">
+      <h4>Regra de ouro</h4>
+      <ul>
+        <li><strong>Cargo e cidade</strong> são filtros principais.</li>
+        <li><strong>Segmento, empresa, idioma e palavras-chave</strong> ajudam a melhorar o ranking.</li>
+        <li>Se colocar filtros demais, a busca pode voltar poucos candidatos.</li>
+      </ul>
+    </div>
+  </div>
+</aside>
+
 <div class="container">
+
+  <div class="intro">
+    <h2>Busca por aderência real ao perfil da vaga</h2>
+    <p>
+      Preencha o cargo e a cidade como critérios principais. Depois use segmento, empresa anterior,
+      idioma e palavras-chave para encontrar candidatos mais próximos do perfil ideal.
+    </p>
+  </div>
+
   <div class="card">
-    <div class="section-title">Filtros obrigatórios <span class="required-dot"></span></div>
+    <div class="section-title">
+      Filtros principais <small>obrigatórios</small>
+    </div>
+
     <div class="grid-2">
-      <div>
-        <label>Cargo <span class="required-dot"></span></label>
-        <input type="text" id="cargo" placeholder="ex: Consultor de Vendas">
+      <div class="field">
+        <label for="cargo">Cargo / título <span class="required-dot"></span></label>
+        <input type="text" id="cargo" placeholder="ex: Consultor de vendas">
+        <div class="hint">
+          O cargo que o candidato deve ter ou ter tido. Ex: <strong>Consultor comercial</strong>, <strong>Executivo de vendas</strong>.
+        </div>
       </div>
-      <div>
-        <label>Cidade <span class="required-dot"></span></label>
+
+      <div class="field">
+        <label for="cidade">Cidade <span class="required-dot"></span></label>
         <input type="text" id="cidade" placeholder="ex: Paulínia">
+        <div class="hint">
+          Cidade onde o candidato mora ou trabalha. Ex: <strong>Paulínia</strong>, <strong>Campinas</strong>, <strong>Valinhos</strong>.
+        </div>
+      </div>
+    </div>
+
+    <div class="search-logic">
+      <h3>Como o sistema interpreta</h3>
+      <div class="logic-list">
+        <div class="logic-item">
+          <strong>1. Entra na busca</strong>
+          <span>Candidato com cargo e localização compatíveis.</span>
+        </div>
+
+        <div class="logic-item">
+          <strong>2. Sobe no ranking</strong>
+          <span>Quem tiver segmento, empresa anterior, idioma e palavras-chave.</span>
+        </div>
+
+        <div class="logic-item">
+          <strong>3. Resultado final</strong>
+          <span>Lista ranqueada por aderência ao perfil desejado.</span>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="section-title">Filtros opcionais</div>
-    <div class="grid-3">
-      <div>
-        <label>Idioma</label>
-        <input type="text" id="idioma" placeholder="ex: inglês">
+    <div class="section-title">
+      Critérios de preferência <small>usados para melhorar o ranking</small>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="segmento">Segmento desejado</label>
+        <input type="text" id="segmento" placeholder="ex: curso de inglês, escola de idiomas, educacional">
+        <div class="hint">
+          Mercado ou experiência desejada. Ex: <strong>escola de idiomas</strong>, <strong>educacional</strong>, <strong>matrícula</strong>.
+        </div>
       </div>
-      <div>
-        <label>Habilidades</label>
-        <input type="text" id="habilidades" placeholder="ex: SAP, vendas B2B">
-      </div>
-      <div>
-        <label>Empresa (passada)</label>
-        <input type="text" id="empresa" placeholder="ex: Wizard">
+
+      <div class="field">
+        <label for="empresaAnterior">Empresa anterior desejada</label>
+        <input type="text" id="empresaAnterior" placeholder="ex: Wizard">
+        <div class="hint">
+          Empresa ou rede que aumenta a aderência. Ex: <strong>Wizard</strong>, <strong>CNA</strong>, <strong>Fisk</strong>, <strong>Wise Up</strong>.
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="actions">
-    <button id="btnBuscar" onclick="buscar()">🔍 BUSCAR CANDIDATOS</button>
-    <label class="checkbox-label">
-      <input type="checkbox" id="enviarEmail">
-      Enviar resultado por e-mail
-    </label>
+    <br>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="idioma">Idioma</label>
+        <input type="text" id="idioma" placeholder="ex: inglês">
+        <div class="hint">
+          Idioma relevante para a vaga. Para escola de inglês, use <strong>inglês</strong>.
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="palavrasChave">Palavras-chave</label>
+        <input type="text" id="palavrasChave" placeholder="ex: matrícula, captação de alunos, vendas consultivas">
+        <div class="hint">
+          Termos que podem aparecer no perfil. Separe por vírgula.
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="btnBuscar" onclick="buscar()">🔍 BUSCAR CANDIDATOS</button>
+
+      <button class="secondary-btn" type="button" onclick="preencherExemplo()">
+        Usar exemplo escola de inglês
+      </button>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="enviarEmail">
+        Enviar resultado por e-mail
+      </label>
+    </div>
   </div>
 
   <div id="status"></div>
 
   <div id="resultados">
     <div id="emailOk" class="email-ok">✅ Resultado enviado para ti@virtusexec.com.br</div>
+
     <div class="resultado-header">
       <h2>CANDIDATOS RANQUEADOS</h2>
       <span class="total-badge" id="totalBadge">0 encontrados</span>
     </div>
+
     <div id="lista"></div>
   </div>
+
 </div>
 
 <script>
+function toggleHelp() {
+  document.getElementById("helpPanel").classList.toggle("open");
+  document.getElementById("overlay").classList.toggle("open");
+}
+
+function preencherExemplo() {
+  document.getElementById("cargo").value = "Consultor de vendas";
+  document.getElementById("cidade").value = "Paulínia";
+  document.getElementById("segmento").value = "curso de inglês, escola de idiomas, educacional";
+  document.getElementById("empresaAnterior").value = "Wizard";
+  document.getElementById("idioma").value = "inglês";
+  document.getElementById("palavrasChave").value = "matrícula, captação de alunos, vendas consultivas, atendimento, CRM";
+}
+
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function montarHabilidadesCombinadas(segmento, palavrasChave) {
+  const partes = [];
+
+  if (segmento) partes.push(segmento);
+  if (palavrasChave) partes.push(palavrasChave);
+
+  return partes.join(", ");
+}
+
+function tagClass(motivo) {
+  const m = String(motivo).toLowerCase();
+
+  if (m.includes("open")) return "tag green";
+
+  if (
+    m.includes("cidade") ||
+    m.includes("cargo") ||
+    m.includes("wizard") ||
+    m.includes("idioma") ||
+    m.includes("inglês") ||
+    m.includes("segmento")
+  ) {
+    return "tag gold";
+  }
+
+  return "tag";
+}
+
 async function buscar() {
   const cargo = document.getElementById("cargo").value.trim();
   const cidade = document.getElementById("cidade").value.trim();
+  const segmento = document.getElementById("segmento").value.trim();
+  const empresaAnterior = document.getElementById("empresaAnterior").value.trim();
+  const idioma = document.getElementById("idioma").value.trim();
+  const palavrasChave = document.getElementById("palavrasChave").value.trim();
 
   if (!cargo || !cidade) {
     alert("Cargo e cidade são obrigatórios.");
@@ -311,22 +969,30 @@ async function buscar() {
 
   const status = document.getElementById("status");
   status.style.display = "block";
-  status.innerHTML = '<span class="spinner"></span> Buscando no LinkedIn via Apify... isso pode levar até 2 minutos.';
+  status.innerHTML = '<span class="spinner"></span> Buscando candidatos no LinkedIn via Apify. Isso pode levar alguns minutos.';
 
   document.getElementById("resultados").style.display = "none";
   document.getElementById("emailOk").style.display = "none";
   document.getElementById("lista").innerHTML = "";
+
+  const habilidadesCombinadas = montarHabilidadesCombinadas(segmento, palavrasChave);
 
   try {
     const resp = await fetch("/buscar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        cargo,
-        cidade,
-        idioma: document.getElementById("idioma").value.trim(),
-        habilidades: document.getElementById("habilidades").value.trim(),
-        empresa: document.getElementById("empresa").value.trim(),
+        cargo: cargo,
+        cidade: cidade,
+
+        segmento: segmento,
+        empresa_anterior: empresaAnterior,
+        empresa: empresaAnterior,
+
+        idioma: idioma,
+        palavras_chave: palavrasChave,
+        habilidades: habilidadesCombinadas,
+
         enviar_email: document.getElementById("enviarEmail").checked
       })
     });
@@ -343,40 +1009,69 @@ async function buscar() {
     }
 
     document.getElementById("resultados").style.display = "block";
-    document.getElementById("totalBadge").textContent = data.total + " encontrado" + (data.total !== 1 ? "s" : "");
+    document.getElementById("totalBadge").textContent =
+      data.total + " encontrado" + (data.total !== 1 ? "s" : "");
 
     if (data.email_enviado) {
       document.getElementById("emailOk").style.display = "block";
     }
 
     const lista = document.getElementById("lista");
-    if (data.candidatos.length === 0) {
-      lista.innerHTML = '<p style="text-align:center;color:#888;padding:32px;">Nenhum candidato encontrado para esse filtro.</p>';
+
+    if (!data.candidatos || data.candidatos.length === 0) {
+      lista.innerHTML = `
+        <div class="empty-state">
+          <strong>Nenhum candidato encontrado para esse filtro.</strong>
+          Tente abrir um pouco a busca: remova empresa anterior, reduza palavras-chave ou use um cargo mais amplo.
+        </div>
+      `;
       return;
     }
 
     data.candidatos.forEach((c, i) => {
       const rank = i + 1;
       const rankClass = rank <= 3 ? "rank top" : "rank";
-      const openToWork = c.open_to_work ? '<span class="tag green">✓ Open to Work</span>' : '';
-      const tags = c.motivos.map(m => `<span class="tag">${m}</span>`).join("");
-      const resumo = c.resumo ? `<p style="font-size:12px;color:#888;margin-top:6px;line-height:1.5;">${c.resumo}</p>` : "";
+
+      const nome = escapeHtml(c.nome || "Nome não informado");
+      const cargoAtual = escapeHtml(c.cargo_atual || "—");
+      const cidadeTexto = escapeHtml(c.cidade || "—");
+      const score = escapeHtml(c.score || 0);
+      const link = escapeHtml(c.link || "#");
+      const resumo = c.resumo
+        ? `<p class="resumo">${escapeHtml(c.resumo)}</p>`
+        : "";
+
+      const openToWork = c.open_to_work
+        ? '<span class="tag green">✓ Open to Work</span>'
+        : "";
+
+      const motivos = Array.isArray(c.motivos) ? c.motivos : [];
+      const tags = motivos.map(m => {
+        return `<span class="${tagClass(m)}">${escapeHtml(m)}</span>`;
+      }).join("");
+
+      const perfilLink = c.link
+        ? `<a href="${link}" target="_blank" class="ver-perfil">Ver perfil →</a>`
+        : `<span class="ver-perfil" style="opacity:.45;">Sem link</span>`;
 
       lista.innerHTML += `
         <div class="candidato">
           <div class="${rankClass}">${rank}</div>
+
           <div>
-            <div class="info-nome">${c.nome}</div>
-            <div class="info-cargo">${c.cargo_atual || "—"}</div>
-            <div class="info-cidade">📍 ${c.cidade || "—"}</div>
+            <div class="info-nome">${nome}</div>
+            <div class="info-cargo">${cargoAtual}</div>
+            <div class="info-cidade">📍 ${cidadeTexto}</div>
             <div class="tags">${openToWork}${tags}</div>
             ${resumo}
           </div>
+
           <div class="score-col">
-            <span class="score-badge">${c.score} pts</span>
-            <a href="${c.link}" target="_blank" class="ver-perfil">Ver perfil →</a>
+            <span class="score-badge">${score} pts</span>
+            ${perfilLink}
           </div>
-        </div>`;
+        </div>
+      `;
     });
 
   } catch (err) {
@@ -393,5 +1088,6 @@ document.querySelectorAll("input").forEach(input => {
   });
 });
 </script>
+
 </body>
 </html>
