@@ -600,86 +600,68 @@ def montar_query_segmento(cargo, cidade, segmento, empresa_anterior, idioma, pal
 
 def montar_inputs_busca(cargo, cidade, segmento="", empresa_anterior="", idioma="", palavras_chave=""):
     cidade_corrigida = corrigir_cidade(cidade)
-    localizacoes = formatar_localizacoes(cidade_corrigida)
-    titulos = montar_titulos_cargo(cargo)
-
     buscas = []
 
-    # Busca 1: filtro nativo, com query curta.
+    # Localizações parecidas com o filtro nativo do LinkedIn:
+    # Campinas, São Paulo, Brasil + Campinas e Região
+    localizacoes = [
+        f"{cidade_corrigida}, São Paulo, Brasil",
+        f"{cidade_corrigida}, São Paulo, Brazil",
+        f"{cidade_corrigida} e Região",
+        cidade_corrigida
+    ]
+
+    localizacoes = limpar_duplicados(localizacoes)
+
+    # Busca 1: BASE LINKEDIN
+    # Copia a lógica do link nativo:
+    # keywords + localidade + setor
+    # Importante: NÃO usa currentJobTitles aqui.
     buscas.append({
-        "nome": "cargo_cidade_nativo",
+        "nome": "base_linkedin",
         "input": {
-            "searchQuery": limitar_search_query(cargo, 280),
+            "searchQuery": limitar_search_query(cargo, 240),
             "locations": localizacoes,
-            "currentJobTitles": titulos,
+            "industryIds": ["6"],
             "profileScraperMode": "Full",
             "maxItems": MAX_ITEMS_APIFY
         }
     })
 
-    # Busca 2: texto livre com cargo + cidade.
+    # Busca 2: texto livre simples, sem locations.
+    # Essa busca salva quando o locations do Apify falha.
     buscas.append({
         "nome": "texto_livre",
         "input": {
-            "searchQuery": limitar_search_query(f"{cargo} {cidade_corrigida}", 280),
+            "searchQuery": limitar_search_query(f"{cargo} {cidade_corrigida}", 240),
             "profileScraperMode": "Full",
             "maxItems": MAX_ITEMS_APIFY
         }
     })
 
-    # Busca 3: segmento / empresa / idioma / palavras-chave.
-    query_segmento = montar_query_segmento(
-        cargo,
-        cidade_corrigida,
-        segmento,
-        empresa_anterior,
-        idioma,
-        palavras_chave
-    )
+    # Busca 3: cargo + cidade + setor/segmento, sem filtro duro.
+    query_segmento = f"{cargo} {cidade_corrigida} {segmento} {empresa_anterior} {idioma} {palavras_chave}"
 
-    if query_segmento and normalizar(query_segmento) != normalizar(f"{cargo} {cidade_corrigida}"):
-        buscas.append({
-            "nome": "segmento_idiomas",
-            "input": {
-                "searchQuery": limitar_search_query(query_segmento, 280),
-                "profileScraperMode": "Full",
-                "maxItems": MAX_ITEMS_APIFY
-            }
-        })
+    buscas.append({
+        "nome": "segmento_texto_livre",
+        "input": {
+            "searchQuery": limitar_search_query(query_segmento, 240),
+            "profileScraperMode": "Full",
+            "maxItems": MAX_ITEMS_APIFY
+        }
+    })
 
-    # Busca 4: expansão comercial curta.
-    if cargo_eh_comercial(cargo):
-        termos_comerciais = (
-            "consultor vendas comercial executivo representante sales "
-            "negócios b2b prospecção atendimento"
-        )
-
-        query_comercial = (
-            f"{cidade_corrigida} {cargo} {termos_comerciais} "
-            f"{segmento} {empresa_anterior} {idioma} {palavras_chave}"
-        )
-
-        buscas.append({
-            "nome": "empresa_segmento",
-            "input": {
-                "searchQuery": limitar_search_query(query_comercial, 280),
-                "profileScraperMode": "Full",
-                "maxItems": MAX_ITEMS_APIFY
-            }
-        })
-
-    # Busca 5: empresa anterior nativa, só se vier URL do LinkedIn.
-    if empresa_anterior and "linkedin.com/company" in empresa_anterior.lower():
-        buscas.append({
-            "nome": "empresa_linkedin_nativa",
-            "input": {
-                "searchQuery": limitar_search_query(cargo, 280),
-                "locations": localizacoes,
-                "pastCompanies": [empresa_anterior.strip()],
-                "profileScraperMode": "Full",
-                "maxItems": MAX_ITEMS_APIFY
-            }
-        })
+    # Busca 4: só cargo + setor, sem cidade.
+    # Depois o nosso código filtra Campinas.
+    buscas.append({
+        "nome": "cargo_setor_sem_cidade",
+        "input": {
+            "searchQuery": limitar_search_query(cargo, 240),
+            "industryIds": ["6"],
+            "profileScraperMode": "Full",
+            "maxItems": MAX_ITEMS_APIFY
+        }
+    })
 
     return buscas[:MAX_BUSCAS_APIFY]
 
