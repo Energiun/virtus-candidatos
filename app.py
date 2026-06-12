@@ -959,7 +959,7 @@ def buscar():
             "ok": True,
             "total": len(candidatos_com_score),
             "candidatos": candidatos_com_score,
-            "email_enviado": false
+            "email_enviado": False
         })
 
     except Exception as e:
