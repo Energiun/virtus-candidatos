@@ -875,10 +875,9 @@
         Usar exemplo escola de inglês
       </button>
 
-      <label class="checkbox-label">
-        <input type="checkbox" id="enviarEmail">
-        Enviar resultado por e-mail
-      </label>
+      <button id="btnPDF" class="secondary-btn" type="button" onclick="baixarPDF()" style="display:none;">
+  📄 Baixar lista PDF
+</button>
     </div>
   </div>
 
@@ -949,7 +948,10 @@ function tagClass(motivo) {
 
   return "tag";
 }
-
+  
+let ultimosCandidatos = [];
+let ultimaBusca = {};
+  
 async function buscar() {
   const cargo = document.getElementById("cargo").value.trim();
   const cidade = document.getElementById("cidade").value.trim();
@@ -993,7 +995,7 @@ async function buscar() {
         palavras_chave: palavrasChave,
         habilidades: habilidadesCombinadas,
 
-        enviar_email: document.getElementById("enviarEmail").checked
+        enviar_email: false
       })
     });
 
@@ -1007,6 +1009,25 @@ async function buscar() {
       alert("Erro: " + data.mensagem);
       return;
     }
+    ultimaBusca = {
+  cargo: cargo,
+  cidade: cidade,
+  segmento: segmento,
+  empresa_anterior: empresaAnterior,
+  idioma: idioma,
+  palavras_chave: palavrasChave
+};
+
+ultimosCandidatos = data.candidatos || [];
+
+const btnPDF = document.getElementById("btnPDF");
+
+if (ultimosCandidatos.length > 0) {
+  btnPDF.style.display = "inline-block";
+  btnPDF.disabled = false;
+} else {
+  btnPDF.style.display = "none";
+}
 
     document.getElementById("resultados").style.display = "block";
     document.getElementById("totalBadge").textContent =
@@ -1087,6 +1108,55 @@ document.querySelectorAll("input").forEach(input => {
     if (e.key === "Enter") buscar();
   });
 });
+
+async function baixarPDF() {
+  if (!ultimosCandidatos || ultimosCandidatos.length === 0) {
+    alert("Faça uma busca com candidatos antes de baixar o PDF.");
+    return;
+  }
+
+  const btn = document.getElementById("btnPDF");
+  const textoOriginal = btn.textContent;
+
+  btn.disabled = true;
+  btn.textContent = "Gerando PDF...";
+
+  try {
+    const resp = await fetch("/baixar_pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...ultimaBusca,
+        candidatos: ultimosCandidatos
+      })
+    });
+
+    if (!resp.ok) {
+      const erro = await resp.text();
+      alert("Erro ao gerar PDF: " + erro);
+      return;
+    }
+
+    const blob = await resp.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "shortlist-virtus-exec.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(url);
+
+  } catch (err) {
+    alert("Erro ao baixar PDF: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+}
+  
 </script>
 
 </body>
