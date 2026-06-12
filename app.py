@@ -955,22 +955,11 @@ def buscar():
 
         print("========== FIM RESULTADO FINAL ==========")
 
-        if enviar_email and candidatos_com_score:
-            enviar_email_resultado(
-                candidatos_com_score,
-                cargo,
-                cidade,
-                segmento,
-                empresa_anterior,
-                idioma,
-                palavras_chave
-            )
-
         return jsonify({
             "ok": True,
             "total": len(candidatos_com_score),
             "candidatos": candidatos_com_score,
-            "email_enviado": enviar_email and len(candidatos_com_score) > 0
+            "email_enviado": false
         })
 
     except Exception as e:
@@ -981,6 +970,191 @@ def buscar():
             "mensagem": str(e)
         }), 500
 
+# =========================
+# PDF - SHORTLIST
+# =========================
+
+def pdf_safe(valor):
+    if valor is None:
+        return ""
+    return escape(str(valor), quote=True)
+
+
+def gerar_pdf_shortlist(data):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1.2 * cm,
+        leftMargin=1.2 * cm,
+        topMargin=1.2 * cm,
+        bottomMargin=1.2 * cm
+    )
+
+    styles = getSampleStyleSheet()
+
+    titulo_style = ParagraphStyle(
+        "TituloVirtus",
+        parent=styles["Title"],
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor("#1a3a5c"),
+        spaceAfter=8
+    )
+
+    subtitulo_style = ParagraphStyle(
+        "SubtituloVirtus",
+        parent=styles["Normal"],
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor("#60758a"),
+        spaceAfter=12
+    )
+
+    nome_style = ParagraphStyle(
+        "NomeCandidato",
+        parent=styles["Heading3"],
+        fontSize=12,
+        leading=15,
+        textColor=colors.HexColor("#1a3a5c"),
+        spaceAfter=4
+    )
+
+    texto_style = ParagraphStyle(
+        "TextoNormal",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor("#333333")
+    )
+
+    pequeno_style = ParagraphStyle(
+        "TextoPequeno",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#666666")
+    )
+
+    story = []
+
+    cargo = data.get("cargo", "—")
+    cidade = data.get("cidade", "—")
+    segmento = data.get("segmento", "—")
+    empresa_anterior = data.get("empresa_anterior", "—")
+    idioma = data.get("idioma", "—")
+    palavras_chave = data.get("palavras_chave", "—")
+    candidatos = data.get("candidatos", [])
+
+    story.append(Paragraph("VIRTUS EXEC", titulo_style))
+    story.append(Paragraph("Shortlist de candidatos ranqueados", subtitulo_style))
+
+    filtros = [
+        ["Cargo", pdf_safe(cargo)],
+        ["Cidade", pdf_safe(cidade)],
+        ["Segmento", pdf_safe(segmento or "—")],
+        ["Empresa anterior desejada", pdf_safe(empresa_anterior or "—")],
+        ["Idioma", pdf_safe(idioma or "—")],
+        ["Palavras-chave", pdf_safe(palavras_chave or "—")],
+        ["Total de candidatos", str(len(candidatos))]
+    ]
+
+    tabela_filtros = Table(filtros, colWidths=[5 * cm, 12 * cm])
+    tabela_filtros.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#e8eef5")),
+        ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#1a3a5c")),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#d9e2ec")),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+
+    story.append(tabela_filtros)
+    story.append(Spacer(1, 14))
+
+    for i, candidato in enumerate(candidatos, 1):
+        nome = pdf_safe(candidato.get("nome", "Nome não informado"))
+        cargo_atual = pdf_safe(candidato.get("cargo_atual", "—"))
+        cidade_candidato = pdf_safe(candidato.get("cidade", "—"))
+        score = pdf_safe(candidato.get("score", 0))
+        resumo = pdf_safe(candidato.get("resumo", ""))
+        link = pdf_safe(candidato.get("link", ""))
+        motivos = candidato.get("motivos", [])
+
+        if isinstance(motivos, list):
+            motivos_txt = ", ".join([str(m) for m in motivos])
+        else:
+            motivos_txt = str(motivos or "")
+
+        motivos_txt = pdf_safe(motivos_txt or "—")
+
+        bloco = []
+
+        bloco.append(Paragraph(f"#{i} — {nome}", nome_style))
+        bloco.append(Paragraph(f"<b>Cargo atual:</b> {cargo_atual}", texto_style))
+        bloco.append(Paragraph(f"<b>Localização:</b> {cidade_candidato}", texto_style))
+        bloco.append(Paragraph(f"<b>Score:</b> {score} pontos", texto_style))
+        bloco.append(Paragraph(f"<b>Motivos do ranking:</b> {motivos_txt}", pequeno_style))
+
+        if resumo:
+            bloco.append(Paragraph(f"<b>Resumo:</b> {resumo}", pequeno_style))
+
+        if link:
+            bloco.append(Paragraph(f"<b>LinkedIn:</b> <a href='{link}' color='blue'>{link}</a>", pequeno_style))
+
+        tabela_candidato = Table([[bloco]], colWidths=[17 * cm])
+        tabela_candidato.setStyle(TableStyle([
+            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#d9e2ec")),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ffffff")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ]))
+
+        story.append(tabela_candidato)
+        story.append(Spacer(1, 8))
+
+    doc.build(story)
+
+    buffer.seek(0)
+    return buffer
+
+
+@app.route("/baixar_pdf", methods=["POST"])
+def baixar_pdf():
+    try:
+        data = request.json or {}
+        candidatos = data.get("candidatos", [])
+
+        if not candidatos:
+            return jsonify({
+                "ok": False,
+                "mensagem": "Nenhum candidato enviado para gerar PDF."
+            }), 400
+
+        pdf_buffer = gerar_pdf_shortlist(data)
+
+        nome_arquivo = "shortlist-virtus-exec.pdf"
+
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=nome_arquivo
+        )
+
+    except Exception as e:
+        print("ERRO PDF:", str(e))
+        return jsonify({
+            "ok": False,
+            "mensagem": f"Erro ao gerar PDF: {str(e)}"
+        }), 500
 
 # =========================
 # EMAIL
