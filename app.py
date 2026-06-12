@@ -183,6 +183,21 @@ def texto_tem(texto, termo):
     return normalizar(termo) in normalizar(texto)
 
 
+def separar_termos(texto):
+    if not texto:
+        return []
+
+    texto = str(texto).replace(";", ",").replace("|", ",").replace("/", ",")
+    termos = []
+
+    for parte in texto.split(","):
+        termo = parte.strip()
+        if termo:
+            termos.append(termo)
+
+    return limpar_duplicados(termos)
+
+
 # =========================
 # LEITURA DO PERFIL DO APIFY
 # =========================
@@ -605,7 +620,7 @@ def score_candidato(
     motivos += motivos_extra
 
     return score, motivos
-
+    
 
 # =========================
 # BUSCAS NO APIFY
