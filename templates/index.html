@@ -972,8 +972,11 @@ async function buscar() {
   status.innerHTML = '<span class="spinner"></span> Buscando candidatos no LinkedIn via Apify. Isso pode levar alguns minutos.';
 
   document.getElementById("resultados").style.display = "none";
-  document.getElementById("emailOk").style.display = "none";
   document.getElementById("lista").innerHTML = "";
+  
+  ultimosCandidatos = [];
+  ultimaBusca = {};
+  document.getElementById("btnPDF").style.display = "none";
 
   const habilidadesCombinadas = montarHabilidadesCombinadas(segmento, palavrasChave);
 
@@ -1031,10 +1034,7 @@ if (ultimosCandidatos.length > 0) {
     document.getElementById("totalBadge").textContent =
       data.total + " encontrado" + (data.total !== 1 ? "s" : "");
 
-    if (data.email_enviado) {
-      document.getElementById("emailOk").style.display = "block";
-    }
-
+    
     const lista = document.getElementById("lista");
 
     if (!data.candidatos || data.candidatos.length === 0) {
